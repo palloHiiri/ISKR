@@ -1,0 +1,59 @@
+---  
+  - name: Build backend
+    hosts: localhost
+    tasks: 
+      - name: Ensure that directory "autodeploy" exists
+        file:
+          path: "/workspace/autodeploy/"
+          state: directory
+
+      - name: Ensure that directory "install_tmp" exists
+        file:
+          path: "/workspace/autodeploy/install_tmp/"
+          state: directory 
+
+      - name: Ensure that directory "build_src" exists
+        file:
+          path: "/workspace/install_tmp/build_src/"
+          state: directory 
+      
+      - name: Ensure that build directory for backend exists
+        file:
+          path: "/workspace/autodeploy/install_tmp/build_src/{{backend_name}}/"
+          state: directory 
+      
+      - name: Remove all old build srcs 
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/ && rm -rf *"
+
+      - name: Copy backend src
+        copy:
+          src: "/workspace/apps/{{backend_name}}/"
+          dest: "/workspace/autodeploy/install_tmp/build_src/{{backend_name}}/"
+      
+      - name: Determine is it maven or gradle
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/ && ls | grep pom.xml"
+        register: pom_xml_search_result
+        failed_when: pom_xml_search_result.rc not in [0,1]
+
+      - name: Maven clean
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/ && mvn clean package -DskipTests"
+        when: pom_xml_search_result.rc == 0
+      
+      - name: Maven build
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/ && mvn package -DskipTests"
+        when: pom_xml_search_result.rc == 0
+      
+      - name: Gradle build
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/ && gradle build"
+        when: pom_xml_search_result.rc == 1
+      
+      - name: Set artifact path
+        set_fact:
+          artifact_path: "{{'target' if pom_xml_search_result.rc == 0 else 'build/libs'}}"
+
+      - name: Copy jar artifacts
+        shell: "cd /workspace/autodeploy/install_tmp/build_src/{{backend_name}}/{{artifact_path}} && \
+          cp *.jar /workspace/artifacts/backend_{{backend_name}}.jar"
+
+      
+      

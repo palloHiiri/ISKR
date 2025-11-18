@@ -1,11 +1,12 @@
----
-  - name: Build accounts backend
-    hosts: localhost
-    tasks: 
-    
+---    
   - name: Deploy accounts backend
     hosts: deploy_back_accounts
     tasks: 
+      - name: Copy jar file
+        copy:
+          src: "/workspace/artifacts/backend_iskr-accounts.jar"
+          dest: "{{base_path}}/docker/apps/"
+
       - name: Give access to socket for install user
         file: 
           path: "/var/run/docker.sock"
@@ -16,6 +17,11 @@
       - name: Stop accounts backend 
         shell: "cd {{base_path}}/docker/ && docker compose -f back_accounts.yml down"
         ignore_errors: yes
+
+      - name: Copy docker build template 
+        template: 
+          src: "/workspace/templates/backs/build.j2"
+          dest: "{{base_path}}/docker/build/Dockerfile-Accounts"
 
       - name: Copy docker template 
         template: 
@@ -28,9 +34,6 @@
       - name: Start accounts backend 
         shell: |
           cd {{base_path}}/docker/ && \
-          AL_POSTGRES_USER={{al_pg_user}} \
-          AL_POSTGRES_PASSWORD={{al_pg_password}} \
-          AL_POSTGRES_DB={{al_pg_db}} \
-          AL_POSTGRES_PORT={{al_pg_port}} \
-          AL_POSTGRES_HOST={{al_pg_host}} \
+          PG_USER={{pg_user}} \
+          PG_PASSWORD={{pg_password}} \
           docker compose -f back_accounts.yml up -d

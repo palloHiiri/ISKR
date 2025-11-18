@@ -1,0 +1,6 @@
+---
+  service_name: "AccountsBackend"
+  service_port: "8021"
+  container_name: "accounts"
+  back_name: "iskr-accounts"
+  

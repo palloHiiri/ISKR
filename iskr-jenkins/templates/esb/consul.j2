@@ -17,6 +17,9 @@ services:
       - {{ network_name }}
     volumes:
       - {{consul_volume}}:/consul/data
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    restart: unless-stopped
 
 networks:
   {{ network_name }}:

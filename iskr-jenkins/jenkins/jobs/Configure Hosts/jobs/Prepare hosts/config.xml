@@ -26,6 +26,10 @@
         <removeLastBuild>false</removeLastBuild>
       </strategy>
     </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
@@ -36,12 +40,12 @@
         <hudson.model.BooleanParameterDefinition>
           <name>INSTALL_PACKAGES</name>
           <description>Необходимо ли установить стандартный набор пакетов?</description>
-          <defaultValue>true</defaultValue>
+          <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>INSTALL_DOCKER</name>
           <description>Необходимо ли установить докер?</description>
-          <defaultValue>true</defaultValue>
+          <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>ANSIBLE_EXTRA_KEYS</name>
@@ -61,12 +65,12 @@
         )
         booleanParam(
             name: &quot;INSTALL_PACKAGES&quot;,
-            defaultValue: true,
+            defaultValue: false,
             description: &quot;Необходимо ли установить стандартный набор пакетов?&quot;
         )
         booleanParam(
             name: &quot;INSTALL_DOCKER&quot;,
-            defaultValue: true,
+            defaultValue: false,
             description: &quot;Необходимо ли установить докер?&quot;
         )
         string(

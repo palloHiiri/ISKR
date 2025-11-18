@@ -4,21 +4,23 @@ networks:
       name: {{network_name}}
 
 services:
-  al:
-    container_name: {{al_container_name}}
-    image: {{al_image}}
+  accounts:
+    container_name: {{container_name}}
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-Accounts
     restart: unless-stopped
     networks:
       - {{network_name}}
     environment:
-      POSTGRES_USER: ${AL_POSTGRES_USER}
-      POSTGRES_PASSWORD: ${AL_POSTGRES_PASSWORD}
-      POSTGRES_DB: ${AL_POSTGRES_DB}
-      PG_PORT: ${AL_POSTGRES_PORT}
-      DB_HOST: ${AL_POSTGRES_HOST}
-      APP_PORT: {{al_port}}
-      SERVICE_NAME: {{al_service_name}}
+      SERVICE_NAME: {{service_name}}
+      PG_USERNAME: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PORT: {{port}}
+      CONSUL_HOST: {{consul_host}}
+      CONSUL_PORT: {{consul_port}}
+      DISCOVERY_HOSTNAME: {{discovery_hostname}}
     ports:
-      - "{{al_port}}:{{al_port}}"
+      - "{{port}}:{{port}}"
     extra_hosts:
       - "host.docker.internal:host-gateway"

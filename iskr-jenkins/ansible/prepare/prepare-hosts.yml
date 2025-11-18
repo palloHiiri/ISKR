@@ -18,6 +18,21 @@
         file: 
           path: "{{base_path}}/docker"
           state: directory
+      
+      - name: Ensure that docker/apps dir exists
+        file: 
+          path: "{{base_path}}/docker/apps"
+          state: directory
+      
+      - name: Ensure that docker/build dir exists
+        file: 
+          path: "{{base_path}}/docker/build"
+          state: directory
+      
+      - name: Ensure that configuration dir exists
+        file: 
+          path: "{{base_path}}/configuration"
+          state: directory
           
       - name: Create docker network
         shell: "docker network create {{network_name}}"

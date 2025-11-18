@@ -1,0 +1,6 @@
+FROM {{run_container_image}} 
+RUN mkdir /app
+
+COPY ../apps/backend_{{back_name}}.jar /app/backend_{{back_name}}.jar
+WORKDIR /app
+ENTRYPOINT ["java", "-jar","/app/backend_{{back_name}}.jar"]

@@ -6,11 +6,8 @@
       <jobProperties/>
       <triggers/>
       <parameters>
-        <string>INSTALL_CC</string>
         <string>ANSIBLE_EXTRA_KEYS</string>
-        <string>INSTALL_AUTH</string>
-        <string>INSTALL_AL</string>
-        <string>INSTALL_DISCORD</string>
+        <string>INSTALL_ACCOUNTS</string>
         <string>PROJECT_NAME</string>
       </parameters>
       <options/>
@@ -19,10 +16,6 @@
   <description>Установка базовых пакетов и docker на хосты для использования их в качестве worker нод</description>
   <keepDependencies>false</keepDependencies>
   <properties>
-    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
-      <autoRebuild>false</autoRebuild>
-      <rebuildDisabled>false</rebuildDisabled>
-    </com.sonyericsson.rebuild.RebuildSettings>
     <jenkins.model.BuildDiscarderProperty>
       <strategy class="hudson.tasks.LogRotator">
         <daysToKeep>-1</daysToKeep>
@@ -32,6 +25,10 @@
         <removeLastBuild>false</removeLastBuild>
       </strategy>
     </jenkins.model.BuildDiscarderProperty>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
@@ -40,24 +37,9 @@
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
-          <name>INSTALL_AUTH</name>
-          <description>Нужно ли задеплоить tournaments-auth?</description>
-          <defaultValue>true</defaultValue>
-        </hudson.model.BooleanParameterDefinition>
-        <hudson.model.BooleanParameterDefinition>
-          <name>INSTALL_CC</name>
-          <description>Нужно ли задеплоить tournaments-competition-core?</description>
-          <defaultValue>true</defaultValue>
-        </hudson.model.BooleanParameterDefinition>
-        <hudson.model.BooleanParameterDefinition>
-          <name>INSTALL_AL</name>
-          <description>Нужно ли задеплоить tournaments-account-linker?</description>
-          <defaultValue>true</defaultValue>
-        </hudson.model.BooleanParameterDefinition>
-        <hudson.model.BooleanParameterDefinition>
-          <name>INSTALL_DISCORD</name>
-          <description>Нужно ли задеплоить tournaments-discord?</description>
-          <defaultValue>true</defaultValue>
+          <name>INSTALL_ACCOUNTS</name>
+          <description>Нужно ли задеплоить accounts backend?</description>
+          <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>ANSIBLE_EXTRA_KEYS</name>
@@ -76,25 +58,11 @@
             description: &quot;Проект для развертывания&quot;
         )
 		booleanParam(
-            name: &quot;INSTALL_AUTH&quot;,
-            defaultValue: true,
-            description: &quot;Нужно ли задеплоить tournaments-auth?&quot;
+            name: &quot;INSTALL_ACCOUNTS&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли задеплоить accounts backend?&quot;
         )
-		booleanParam(
-            name: &quot;INSTALL_CC&quot;,
-            defaultValue: true,
-            description: &quot;Нужно ли задеплоить tournaments-competition-core?&quot;
-        )
-		booleanParam(
-            name: &quot;INSTALL_AL&quot;,
-            defaultValue: true,
-            description: &quot;Нужно ли задеплоить tournaments-account-linker?&quot;
-        )
-		booleanParam(
-            name: &quot;INSTALL_DISCORD&quot;,
-            defaultValue: true,
-            description: &quot;Нужно ли задеплоить tournaments-discord?&quot;
-        )
+
         string(
             name: &quot;ANSIBLE_EXTRA_KEYS&quot;,
             description: &quot;Дополнительные ключи ansible&quot;
@@ -106,7 +74,7 @@
 		BASE_ANSIBLE_PARAMS = &quot;-i ../inventory/general -i ../inventory/${params.PROJECT_NAME}/hosts -i ../inventory/${params.PROJECT_NAME}/configuration&quot;
 		ANSIBLE_EXEC = &quot;/root/.local/bin/ansible&quot;
 		ANSIBLE_EXEC_PLAYBOOK = &quot;/root/.local/bin/ansible-playbook&quot;
-		DEPLOY_GROUP = &quot;deploy_backs&quot;
+		DEPLOY_GROUP = &quot;deploy_back&quot;
 	}
 	stages {
 	    stage(&quot;Test connection&quot;) {
@@ -124,70 +92,32 @@
         }
         stage(&quot;Prepare installation&quot;) {
 		    parallel {
-                stage(&quot;Install auth&quot;) {
+                stage(&quot;Install accounts&quot;) {
                     when {
-                        expression { params.INSTALL_AUTH }
+                        expression { params.INSTALL_ACCOUNTS }
                     }
                     steps {
+						script {
+                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+    						  sh &quot;&quot;&quot;
+    							${env.PREPARE_CMD} &amp;&amp; \
+    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/build-backend.yml \
+    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;) -e &quot;backend_name=iskr-accounts&quot;
+    							&quot;&quot;&quot;
+                             }
+    					}
                         script {
                              withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
     						  sh &quot;&quot;&quot;
     							${env.PREPARE_CMD} &amp;&amp; \
-    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-auth.yml \
-    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
+    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-accounts.yml \
+    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;) 
     							&quot;&quot;&quot;
                              }
     					}
                     }
                 }
-                stage(&quot;Install Competition Core&quot;) {
-                    when {
-                        expression { params.INSTALL_CC }
-                    }
-                    steps {
-                        script {
-                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
-    						  sh &quot;&quot;&quot;
-    							${env.PREPARE_CMD} &amp;&amp; \
-    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-cc.yml \
-    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
-    							&quot;&quot;&quot;
-                             }
-    					}
-                    }
-                }
-				stage(&quot;Install Account Linker&quot;) {
-                    when {
-                        expression { params.INSTALL_AL }
-                    }
-                    steps {
-                        script {
-                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
-    						  sh &quot;&quot;&quot;
-    							${env.PREPARE_CMD} &amp;&amp; \
-    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-al.yml \
-    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
-    							&quot;&quot;&quot;
-                             }
-    					}
-                    }
-                }
-				stage(&quot;Install Discord&quot;) {
-                    when {
-                        expression { params.INSTALL_DISCORD }
-                    }
-                    steps {
-                        script {
-                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
-    						  sh &quot;&quot;&quot;
-    							${env.PREPARE_CMD} &amp;&amp; \
-    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-discord.yml \
-    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
-    							&quot;&quot;&quot;
-                             }
-    					}
-                    }
-                }
+                
             }
 		}		
 	}
