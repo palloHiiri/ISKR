@@ -1,23 +1,24 @@
 spring:
   application:
-    name: ${SERVICE_NAME}
+    name: IntegrationBus
   config:
     import: "consul:"
   cloud:
     consul:
-      host: ${CONSUL_HOST}
-      port: ${CONSUL_PORT}
+      host: localhost
+      port: 8500
       discovery:
         instance-id: ${spring.application.name}:${random.uuid}
-        hostname: ${DISCOVERY_HOSTNAME}
+        hostname: localhost
       config:
         enabled: true
-        defaultContext: ${CONSUL_KV_DEFAULT}
+        defaultContext: apps
         format: YAML
         watch:
           enabled: true
-  datasource:
-    username: ${PG_USERNAME}
-    password: ${PG_PASSWORD}
 server:
-  port: ${PORT}
+  port: 8025
+
+keycloak:
+  secret: sQHojGkgdEizTOCXhuNHeL2pnoqj81Gu
+#  ssl-required: external

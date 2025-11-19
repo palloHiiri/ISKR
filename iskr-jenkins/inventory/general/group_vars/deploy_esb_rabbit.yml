@@ -1,0 +1,6 @@
+---
+  rabbit_image: "rabbitmq:management-alpine"
+  rabbit_container_name: "rabbit"
+  rabbit_ui_port: "15672"
+  rabbit_port: "5672"
+  

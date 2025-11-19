@@ -8,3 +8,7 @@
   metrics_exposed: "health,prometheus,info,metrics"
   metrics_show_details: "always"
   metrics_show_components: "always"
+  sso_host: "localhost"
+  sso_port: "8080"
+  sso_realm: "iskr"
+  sso_service: "integration-bus"

@@ -25,5 +25,30 @@
           --request PUT \
           --data-binary @accounts.yml \
           http://localhost:{{consul_port}}/v1/kv/config/AccountsBackend/data
+      
+      - name: Copy rabbit definitions.json
+        copy:
+          src: "/workspace/templates/confs/definitions.json"
+          dest: "{{base_path}}/configuration/rabbit_definitions.json"
+      
+      - name: Load rabbit definitions
+        shell: |
+          cd {{base_path}}/configuration && \
+          curl -u {{rabbit_admin_user}}:{{rabbit_admin_password}} -X POST -H "Content-Type: application/json" \
+          http://localhost:{{rabbit_ui_port}}/api/definitions \
+          -d @rabbit_definitions.json
+
+      
+      - name: Copy integration configuration
+        template: 
+           src: "/workspace/templates/esb/configuration/integration.j2"
+           dest: "{{base_path}}/configuration/integration.yml"
+
+      - name: Load integration configuration 
+        shell: |
+          cd {{base_path}}/configuration && curl \
+          --request PUT \
+          --data-binary @integration.yml \
+          http://localhost:{{consul_port}}/v1/kv/config/IntegrationBus/data
         
       

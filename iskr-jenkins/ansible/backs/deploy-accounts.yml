@@ -28,7 +28,7 @@
           src: "/workspace/templates/backs/accounts.j2"
           dest: "{{base_path}}/docker/back_accounts.yml"
 
-      - name: Pull accounts image 
+      - name: Build accounts image 
         shell: "cd {{base_path}}/docker/ && docker compose -f back_accounts.yml build"
       
       - name: Start accounts backend 

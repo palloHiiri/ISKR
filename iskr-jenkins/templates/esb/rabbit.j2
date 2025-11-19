@@ -1,0 +1,20 @@
+networks:
+  {{ network_name }}:
+    external: true
+    name: {{ network_name }}
+
+services:
+  rabbit:
+    image: {{rabbit_image}}
+    container_name: {{rabbit_container_name}}
+    restart: unless-stopped
+    ports:
+      - "{{rabbit_port}}:{{rabbit_port}}"
+      - "{{rabbit_ui_port}}:{{rabbit_ui_port}}"
+    environment:
+      - RABBITMQ_DEFAULT_USER=${RABBIT_USER}
+      - RABBITMQ_DEFAULT_PASS=${RABBIT_PASSWORD}
+    networks:
+      - {{ network_name }}
+   
+

@@ -12,7 +12,6 @@ services:
       - "{{ consul_dns_port }}:{{ consul_dns_port }}/tcp"
       - "{{ consul_dns_port }}:{{ consul_dns_port }}/udp"
       - "{{ consul_api_port }}:{{ consul_api_port }}"
-      - "8020-8040:8020-8040"
     networks:
       - {{ network_name }}
     volumes:

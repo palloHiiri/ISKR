@@ -22,7 +22,7 @@
         shell: "cd {{base_path}}/docker/ && docker compose -f esb_consul.yml pull"
       
 
-      - name: Start auth backend 
+      - name: Start consul
         shell: |
           cd {{base_path}}/docker/ && \
           docker compose -f esb_consul.yml up -d

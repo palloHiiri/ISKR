@@ -1,0 +1,6 @@
+---
+  keycloak_image: "quay.io/keycloak/keycloak:latest"
+  keycloak_container_name: "keycloak"
+  keykloak_db: "postgres"
+  keykloak_db_jdbc_string: "jdbc:postgresql://host.docker.internal:5432/postgres?currentSchema=sso"
+  keykloak_port: "8080"

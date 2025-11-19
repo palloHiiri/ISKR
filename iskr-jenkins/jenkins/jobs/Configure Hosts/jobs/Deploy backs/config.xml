@@ -6,6 +6,7 @@
       <jobProperties/>
       <triggers/>
       <parameters>
+        <string>BUILD_ACCOUNTS</string>
         <string>ANSIBLE_EXTRA_KEYS</string>
         <string>INSTALL_ACCOUNTS</string>
         <string>PROJECT_NAME</string>
@@ -16,6 +17,10 @@
   <description>Установка базовых пакетов и docker на хосты для использования их в качестве worker нод</description>
   <keepDependencies>false</keepDependencies>
   <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
     <jenkins.model.BuildDiscarderProperty>
       <strategy class="hudson.tasks.LogRotator">
         <daysToKeep>-1</daysToKeep>
@@ -25,10 +30,6 @@
         <removeLastBuild>false</removeLastBuild>
       </strategy>
     </jenkins.model.BuildDiscarderProperty>
-    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
-      <autoRebuild>false</autoRebuild>
-      <rebuildDisabled>false</rebuildDisabled>
-    </com.sonyericsson.rebuild.RebuildSettings>
     <hudson.model.ParametersDefinitionProperty>
       <parameterDefinitions>
         <hudson.model.StringParameterDefinition>
@@ -36,6 +37,11 @@
           <description>Проект для развертывания</description>
           <trim>false</trim>
         </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_ACCOUNTS</name>
+          <description>Нужно ли собрать accounts backend?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
         <hudson.model.BooleanParameterDefinition>
           <name>INSTALL_ACCOUNTS</name>
           <description>Нужно ли задеплоить accounts backend?</description>
@@ -56,6 +62,11 @@
         string(
             name: &quot;PROJECT_NAME&quot;,
             description: &quot;Проект для развертывания&quot;
+        )
+        booleanParam(
+            name: &quot;BUILD_ACCOUNTS&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли собрать accounts backend?&quot;
         )
 		booleanParam(
             name: &quot;INSTALL_ACCOUNTS&quot;,
@@ -90,11 +101,11 @@
                 }
             }
         }
-        stage(&quot;Prepare installation&quot;) {
+        stage(&quot;Prepare builds&quot;) {
 		    parallel {
-                stage(&quot;Install accounts&quot;) {
+                stage(&quot;Build accounts&quot;) {
                     when {
-                        expression { params.INSTALL_ACCOUNTS }
+                        expression { params.BUILD_ACCOUNTS }
                     }
                     steps {
 						script {
@@ -106,7 +117,18 @@
     							&quot;&quot;&quot;
                              }
     					}
-                        script {
+                    }
+                }
+            }
+		}		
+		stage(&quot;Prepare installations&quot;) {
+		    parallel {
+                stage(&quot;Deploy accounts&quot;) {
+                    when {
+                        expression { params.INSTALL_ACCOUNTS }
+                    }
+                    steps {
+						script {
                              withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
     						  sh &quot;&quot;&quot;
     							${env.PREPARE_CMD} &amp;&amp; \
@@ -117,7 +139,6 @@
     					}
                     }
                 }
-                
             }
 		}		
 	}

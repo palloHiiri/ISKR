@@ -1,0 +1,29 @@
+---
+  - name: Deploy rabbit esb
+    hosts: deploy_esb_rabbit
+    tasks: 
+      - name: Give access to socket for install user
+        file: 
+          path: "/var/run/docker.sock"
+          state: file 
+          owner: "{{ansible_user}}"
+        become: yes
+      
+      - name: Down app 
+        shell: "cd {{base_path}}/docker/ && docker compose -f esb_rabbit.yml down"
+        ignore_errors: yes
+        
+      - name: Copy docker template 
+        template: 
+          src: "/workspace/templates/esb/rabbit.j2"
+          dest: "{{base_path}}/docker/esb_rabbit.yml"   
+      
+      - name: Pull image 
+        shell: "cd {{base_path}}/docker/ && docker compose -f esb_rabbit.yml pull"
+      
+      - name: Start rabbit
+        shell: |
+          cd {{base_path}}/docker/ && \
+          RABBIT_USER={{rabbit_admin_user}} \
+          RABBIT_PASSWORD={{rabbit_admin_password}} \
+          docker compose -f esb_rabbit.yml up -d

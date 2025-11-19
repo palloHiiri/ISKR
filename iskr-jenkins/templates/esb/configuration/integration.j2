@@ -1,0 +1,26 @@
+spring:
+  
+management:
+  endpoints:
+    web:
+      exposure:
+        include: {{metrics_exposed}}
+      base-path: {{base_metrics_path}}
+  endpoint:
+    health:
+      show-details: {{metrics_show_details}}
+      show-components: {{metrics_show_components}}
+
+camel:
+  springboot:
+    name: integration-bus
+  servlet:
+    mapping:
+      enabled: true
+      path: /oapi/*
+
+keycloak:
+  auth-server-url: http://{{sso_host}}:{{sso_port}}/
+  bearer-only: true
+  realm: {{sso_realm}}
+  service: {{sso_service}}
