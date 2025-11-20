@@ -3,5 +3,12 @@
   hosts: deploy_esb_consul
   become: yes
   tasks:
+    - name: Give access to socket for install user
+      file: 
+        path: "/var/run/docker.sock"
+        state: file 
+        owner: "{{ansible_user}}"
+      become: yes
+
     - name: Clear consul kv
       shell: "docker exec {{consul_container_name}} consul kv delete -recurse /"

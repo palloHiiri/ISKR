@@ -4,6 +4,8 @@ import com.fuzis.integrationbus.configuration.SSOConfiguration;
 import com.fuzis.integrationbus.exception.AuthenticationException;
 import com.fuzis.integrationbus.model.UserInfo;
 import jakarta.annotation.PostConstruct;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
@@ -15,7 +17,7 @@ import java.util.Map;
 
 @Component
 public class JwtValidator {
-
+    private static final Logger log = LoggerFactory.getLogger(JwtValidator.class);
 
     private final SSOConfiguration ssoConfiguration;
 
@@ -25,13 +27,18 @@ public class JwtValidator {
 
     private JwtDecoder jwtDecoder;
 
+
+    private String jwkSetUri;
+
     @PostConstruct
     public void init() {
-        String jwkSetUri = ssoConfiguration.keycloakUrl + "/realms/" + ssoConfiguration.realm + "/protocol/openid-connect/certs";
+        String jwkSetUri = ssoConfiguration.getKeycloakUrl() + "/realms/" + ssoConfiguration.getRealm() + "/protocol/openid-connect/certs";
+        this.jwkSetUri = jwkSetUri;
         this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
     }
 
     public Jwt validateToken(String token) throws AuthenticationException{
+        log.debug("Formed url: {}", jwkSetUri);
         try {
             return jwtDecoder.decode(token);
         } catch (Exception e) {
@@ -67,7 +74,7 @@ public class JwtValidator {
 
     private List<String> extractClientRoles(Jwt jwt) throws AuthenticationException{
         var resource_access = jwt.getClaimAsMap("resource_access");
-        Object clients = resource_access.get(ssoConfiguration.service);
+        Object clients = resource_access.get(ssoConfiguration.getService());
         if (clients instanceof Map){
             Object ClientRoles =  ((Map<?, ?>) clients).get("roles");
             if (ClientRoles instanceof List){

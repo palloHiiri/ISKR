@@ -2,5 +2,12 @@
 - name: Clear consul sd
   hosts: deploy_esb_consul
   tasks:
+    - name: Give access to socket for install user
+      file: 
+        path: "/var/run/docker.sock"
+        state: file 
+        owner: "{{ansible_user}}"
+      become: yes
+
     - name: Clear consul sd
       shell: "docker exec {{consul_container_name}} sh -c 'curl -s http://localhost:{{consul_api_port}}/v1/agent/services | jq -r \".[].ID\" | while read service; do curl -s -X PUT http://localhost:{{consul_api_port}}/v1/agent/service/deregister/$service; done'"

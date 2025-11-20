@@ -12,3 +12,4 @@
   sso_port: "8080"
   sso_realm: "iskr"
   sso_service: "integration-bus"
+  log_level: "INFO"
