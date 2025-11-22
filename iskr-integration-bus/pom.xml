@@ -73,13 +73,13 @@
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
-            <artifactId>camel-consul</artifactId>
+            <artifactId>camel-http</artifactId>
             <version>4.15.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel</groupId>
             <artifactId>camel-jackson</artifactId>
-            <version>4.15.0</version> <!-- используйте вашу версию Camel -->
+            <version>4.15.0</version>
         </dependency>
         <dependency>
             <groupId>org.apache.camel.springboot</groupId>

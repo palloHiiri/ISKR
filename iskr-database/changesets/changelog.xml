@@ -26,4 +26,13 @@
             <sqlFile path="v2_rollback.sql" relativeToChangelogFile="true"/>
         </rollback>
     </changeSet>
+
+    <changeSet id="functions-3" author="fuzis" runInTransaction="true">
+        <sqlFile path="v3_functions.sql"
+                 relativeToChangelogFile="true"
+                 splitStatements="false"/>
+        <rollback>
+            <sqlFile path="v3_rollback.sql" relativeToChangelogFile="true"/>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

@@ -1,4 +1,4 @@
-package com.fuzis.integrationbus.processors;
+package com.fuzis.integrationbus.processor;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -19,13 +19,12 @@ public class BackendErrorProcessor implements Processor {
         String body = exchange.getIn().getBody(String.class);
         String userId = exchange.getIn().getHeader("X-User-ID", String.class);
 
-        log.error("Service returned error for user {}: {} - {}", userId, statusCode, body);
+        log.error("Service returned error for user {}: {}", userId, statusCode);
 
         Map<String, Object> errorResponse = new HashMap<>();
         errorResponse.put("error", "Service returned error");
         errorResponse.put("code", statusCode != null ? statusCode : 500);
         errorResponse.put("details", body != null ? body : "Unknown error");
-        errorResponse.put("userId", userId);
         errorResponse.put("timestamp", java.time.Instant.now().toString());
 
         exchange.getIn().setBody(errorResponse);

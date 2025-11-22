@@ -1,4 +1,4 @@
-package com.fuzis.integrationbus.processors;
+package com.fuzis.integrationbus.processor;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;

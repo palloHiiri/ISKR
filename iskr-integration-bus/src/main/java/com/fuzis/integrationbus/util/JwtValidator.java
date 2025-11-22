@@ -1,4 +1,4 @@
-package com.fuzis.integrationbus.auth;
+package com.fuzis.integrationbus.util;
 
 import com.fuzis.integrationbus.configuration.SSOConfiguration;
 import com.fuzis.integrationbus.exception.AuthenticationException;
@@ -25,22 +25,9 @@ public class JwtValidator {
         this.ssoConfiguration = ssoConfiguration;
     }
 
-    private JwtDecoder jwtDecoder;
-
-
-    private String jwkSetUri;
-
-    @PostConstruct
-    public void init() {
-        String jwkSetUri = ssoConfiguration.getKeycloakUrl() + "/realms/" + ssoConfiguration.getRealm() + "/protocol/openid-connect/certs";
-        this.jwkSetUri = jwkSetUri;
-        this.jwtDecoder = NimbusJwtDecoder.withJwkSetUri(jwkSetUri).build();
-    }
-
     public Jwt validateToken(String token) throws AuthenticationException{
-        log.debug("Formed url: {}", jwkSetUri);
         try {
-            return jwtDecoder.decode(token);
+            return ssoConfiguration.getJwtDecoder().decode(token);
         } catch (Exception e) {
             throw new AuthenticationException("Invalid JWT token", e);
         }
@@ -48,12 +35,11 @@ public class JwtValidator {
 
     public UserInfo extractUserInfo(String token) throws AuthenticationException {
         Jwt jwt = validateToken(token);
-
         return UserInfo.builder()
                 .subject(jwt.getSubject())
                 .userId(jwt.getClaimAsString("given_name"))
                 .nickname(jwt.getClaimAsString("family_name"))
-                .login(jwt.getClaimAsString("username"))
+                .login(jwt.getClaimAsString("preferred_username"))
                 .email(jwt.getClaimAsString("email"))
                 .emailVerified(jwt.getClaimAsBoolean("email_verified"))
                 .realmRoles(extractRealmRoles(jwt))

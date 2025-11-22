@@ -13,3 +13,4 @@
   sso_realm: "iskr"
   sso_service: "integration-bus"
   log_level: "INFO"
+  keycloak_container: "{{ hostvars[groups['deploy_esb_keycloak'][0]].keycloak_container_name }}"

@@ -1,4 +1,4 @@
-package com.fuzis.integrationbus.processors;
+package com.fuzis.integrationbus.processor;
 
 import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
@@ -17,7 +17,7 @@ public class EnrichProcessor implements Processor {
     public void process(Exchange exchange) throws Exception {
         try {
             Map currentBody = exchange.getIn().getBody(Map.class);
-            String userId = exchange.getIn().getHeader("X-User", String.class);
+            String userId = exchange.getIn().getHeader("X-User-Id", String.class);
             if(userId == null)userId = "None";
 
 

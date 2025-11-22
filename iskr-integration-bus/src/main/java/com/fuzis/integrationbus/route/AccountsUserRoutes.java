@@ -1,17 +1,20 @@
 package com.fuzis.integrationbus.route;
 
 import com.fuzis.integrationbus.exception.AuthenticationException;
-import com.fuzis.integrationbus.processors.AuthHeaderProcessor;
-import com.fuzis.integrationbus.processors.BackendErrorProcessor;
-import com.fuzis.integrationbus.processors.EnrichProcessor;
-import com.fuzis.integrationbus.processors.JsonBodyValidationProcessor;
+import com.fuzis.integrationbus.processor.AuthHeaderProcessor;
+import com.fuzis.integrationbus.processor.BackendErrorProcessor;
+import com.fuzis.integrationbus.processor.EnrichProcessor;
+import com.fuzis.integrationbus.processor.JsonBodyValidationProcessor;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.apache.camel.model.dataformat.JsonLibrary;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.Map;
 
 @Component
 public class AccountsUserRoutes extends RouteBuilder {
@@ -46,62 +49,21 @@ public class AccountsUserRoutes extends RouteBuilder {
 
         from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=GET")
                 .routeId("accounts-user-get-route")
-                .onException(AuthenticationException.class)
-                    .log("Ошибка: ${exception.message}")
-                    .handled(true)
-                    .to("direct:error-authentication-handler")
-                .end()
-                .log("GET request for user profile")
                 .setHeader("X-Roles-Required", constant("profile-watch"))
-                .process(authHeaderProcessor)
-                .log("User authorized for GET: ${header.X-Login}")
-                .removeHeader("Authorization")
-                .removeHeader("X-Roles-Required")
+                .to("direct:auth")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
-                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-                .log("Forwarding GET to accounts service for user id: ${header.X-User-ID}")
-                //.process(this::prepareServiceCall)
-//                .loadBalance().roundRobin()
-//                .to("consul:http://AccountsBackend")
-                //.end()
-                //.toD("${header.targetUrl}?bridgeEndpoint=true&throwExceptionOnFailure=false")
-                .toD("${bean:serviceDiscovery?method=getAccountsServiceUrl}/api/v1/accounts/user?httpMethod=GET")
-                .log("Received GET response from accounts service: ${body}")
-                .choice()
-                .when(header(Exchange.HTTP_RESPONSE_CODE).isEqualTo(200))
-                .log("Successfully retrieved user profile")
-                .process(enrichProcessor)
-                .otherwise()
-                .log("Accounts service returned error: ${header.CamelHttpResponseCode}")
-                .process(backendErrorProcessor)
-                .end();
+                .setHeader("X-Service", constant("Accounts"))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-ID}"))
+                .to("direct:sd-call-finalize");
 
         from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=PUT")
                 .routeId("accounts-user-put-route")
-                .log("PUT request to update user profile")
-                .setHeader("X-Roles-Required", constant("profile-change,profile-watch"))
-                .process(authHeaderProcessor)
-                .log("User authorized for PUT: ${header.X-Login}")
-                .process(jsonBodyValidationProcessor)
-                .removeHeader("Authorization")
-                .removeHeader("X-Roles-Required")
+                .setHeader("X-Roles-Required", constant("profile-watch,profile-change"))
+                .to("direct:auth")
                 .setHeader(Exchange.HTTP_METHOD, constant("PUT"))
-                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
-                .log("Forwarding PUT to accounts service for user id: ${header.X-User-ID}")
-//                .loadBalance().roundRobin()
-//                .to("consul:http://AccountsBackend")
-//                .end()
-                .toD("${bean:serviceDiscovery?method=getAccountsServiceUrl}/api/v1/accounts/user?httpMethod=GET")
-                //.toD("${header.targetUrl}?bridgeEndpoint=true&throwExceptionOnFailure=false")
-                .log("📤 Received PUT response from accounts service: ${body}")
-                .choice()
-                .when(header(Exchange.HTTP_RESPONSE_CODE).isEqualTo(200))
-                .log("Successfully updated user profile")
-                .process(enrichProcessor)
-                .otherwise()
-                .log("Accounts service returned error: ${header.CamelHttpResponseCode}")
-                .process(backendErrorProcessor)
-                .end();
+                .setHeader("X-Service", constant("Accounts"))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-ID}"))
+                .to("direct:sd-call-finalize");
 
         from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=OPTIONS")
                 .routeId("accounts-user-options-route")

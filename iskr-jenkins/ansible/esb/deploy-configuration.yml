@@ -50,5 +50,24 @@
           --request PUT \
           --data-binary @integration.yml \
           http://localhost:{{consul_port}}/v1/kv/config/IntegrationBus/data
+      
+      - name: Copy keycloak realm-export.json
+        copy:
+          src: "/workspace/templates/confs/realm-export.json"
+          dest: "{{base_path}}/configuration/realm-export.json"
+      
+      - name: Copy realm-export to keycloak container
+        shell: |
+          cd {{base_path}}/configuration && \
+          docker cp realm-export.json {{keycloak_container}}:/tmp/
+      
+      - name: Upload realm-export to keycloak
+        shell: |
+          docker exec -it {{keycloak_container}} /opt/keycloak/bin/kc.sh import \
+          --file /tmp/realm-export.json
+
+      - name: Restart keycloak
+        shell: |
+          docker restart {{keycloak_container}}
         
       
