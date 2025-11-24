@@ -27,8 +27,8 @@ public class TokenController {
         return httpUtil.handleServiceResponse(tokenService.redeemToken(token));
     }
 
-    @PostMapping("/")
-    public ResponseEntity<ChangeDTO<Token>> createToken(@RequestParam @NotBlank Integer userId, @RequestParam @NotBlank String type) {
+    @PostMapping
+    public ResponseEntity<ChangeDTO<Token>> createToken(@RequestParam Integer userId, @RequestParam @NotBlank String type) {
         return httpUtil.handleServiceResponse(tokenService.createToken(userId, type));
     }
 }

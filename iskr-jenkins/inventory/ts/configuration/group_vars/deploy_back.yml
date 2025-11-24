@@ -1,0 +1,8 @@
+---
+  run_container_image: "amazoncorretto:21-al2-jdk"
+  pg_user: "{{postgresql_admin_user}}"
+  pg_password: "{{postgresql_admin_password}}"
+  consul_default: "apps"
+  consul_host: "host.docker.internal"
+  consul_port: "hostvars[groups['deploy_esb_consul'][0]].consul_api_port"
+  discovery_hostname: "localhost"

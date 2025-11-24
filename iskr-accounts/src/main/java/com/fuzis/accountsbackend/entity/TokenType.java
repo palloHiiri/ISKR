@@ -1,5 +1,6 @@
 package com.fuzis.accountsbackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Getter;
@@ -27,6 +28,7 @@ public class TokenType {
         this.ttName = ttName;
     }
 
+    @JsonIgnore
     @OneToMany(mappedBy = "tokenType")
     private List<Token> tokens;
 }

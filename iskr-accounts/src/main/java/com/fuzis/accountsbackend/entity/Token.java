@@ -28,7 +28,7 @@ public class Token {
     @JoinColumn(name = "token_type")
     private TokenType tokenType;
 
-    @Column(name = "token-body")
+    @Column(name = "token_body")
     private String tokenBody;
 
     public Token(String tokenKey, ZonedDateTime till_date, TokenType tokenType, String tokenBody) {

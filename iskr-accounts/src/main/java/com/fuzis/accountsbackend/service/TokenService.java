@@ -62,25 +62,25 @@ public class TokenService {
     }
 
     public ChangeDTO<Token> createToken(Integer userId, String type) {
+        try {
+            Optional<User> user = userRepository.findById(userId);
+            if(user.isEmpty()) {
+                throw new RuntimeException("User not found");
+            }
+            if(this.tokenTypeRepository.getTokenTypeByttName(type) == null){
+                return new ChangeDTO<>(State.Fail_Not_Implemented, "Unknown token type to create", null);
+            }
+            Token token = tokenRepository.save(new Token(tokenGenerator.getTokenKey(), ZonedDateTime.now().plusSeconds(token_base_expire),
+                    this.tokenTypeRepository.getTokenTypeByttName(type), userId.toString()));
+            EmailType emailType = EmailType.getByTokenType(type);
+            rabbitSendService.send_email(new EmailDTO<>(user.get().getProfile().getEmail(),
+                    emailType,
+                    token.getTokenKey()));
+            return new ChangeDTO<>(State.OK, "Token sent", token);
+        }
+        catch (Exception e) {
+            return new ChangeDTO<>(State.Fail, "Unknown error ("+e+") " + e.getMessage(), null);
+        }
 
-        if(Objects.equals(type, "verify_email_token")){
-            try {
-                Optional<User> user = userRepository.findById(userId);
-                if(user.isEmpty()) {
-                    throw new RuntimeException("User not found");
-                }
-                Token token = tokenRepository.save(new Token(tokenGenerator.getTokenKey(), ZonedDateTime.now().plusSeconds(token_base_expire),
-                        this.tokenTypeRepository.getTokenTypeByttName("verify_email_token"), userId.toString()));
-                rabbitSendService.send_email(new EmailDTO<>(user.get().getProfile().getEmail(), EmailType.VerifyEmailEmail, token.getTokenKey()));
-                return new ChangeDTO<>(State.OK, "Token sent", token);
-            }
-            catch (Exception e) {
-                return new ChangeDTO<>(State.Fail, "Unknown error ("+e+") " + e.getMessage(), null);
-            }
-        }
-        if(Objects.equals(type, "reset_password_token")){
-            return new ChangeDTO<>(State.Fail_NotFound, "Unable to create password change token directly, use another endpoint", null);
-        }
-        return new ChangeDTO<>(State.Fail_Not_Implemented, "Unknown token type to crete", null);
     }
 }

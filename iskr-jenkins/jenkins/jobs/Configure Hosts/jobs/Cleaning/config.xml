@@ -1,0 +1,171 @@
+<?xml version='1.1' encoding='UTF-8'?>
+<flow-definition plugin="workflow-job@1559.va_a_533730b_ea_d">
+  <actions>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1"/>
+    <org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction plugin="pipeline-model-definition@2.2277.v00573e73ddf1">
+      <jobProperties/>
+      <triggers/>
+      <parameters>
+        <string>ANSIBLE_EXTRA_KEYS</string>
+        <string>ROLLBACK_MIGRATIONS</string>
+        <string>CLEAN_SD</string>
+        <string>PROJECT_NAME</string>
+        <string>CLEAN_KV</string>
+      </parameters>
+      <options/>
+    </org.jenkinsci.plugins.pipeline.modeldefinition.actions.DeclarativeJobPropertyTrackerAction>
+  </actions>
+  <description></description>
+  <keepDependencies>false</keepDependencies>
+  <properties>
+    <com.sonyericsson.rebuild.RebuildSettings plugin="rebuild@338.va_0a_b_50e29397">
+      <autoRebuild>false</autoRebuild>
+      <rebuildDisabled>false</rebuildDisabled>
+    </com.sonyericsson.rebuild.RebuildSettings>
+    <jenkins.model.BuildDiscarderProperty>
+      <strategy class="hudson.tasks.LogRotator">
+        <daysToKeep>-1</daysToKeep>
+        <numToKeep>100</numToKeep>
+        <artifactDaysToKeep>-1</artifactDaysToKeep>
+        <artifactNumToKeep>-1</artifactNumToKeep>
+        <removeLastBuild>false</removeLastBuild>
+      </strategy>
+    </jenkins.model.BuildDiscarderProperty>
+    <hudson.model.ParametersDefinitionProperty>
+      <parameterDefinitions>
+        <hudson.model.StringParameterDefinition>
+          <name>PROJECT_NAME</name>
+          <description>Проект для развертывания</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>ROLLBACK_MIGRATIONS</name>
+          <description>Нужно ли очичтить бд?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>CLEAN_KV</name>
+          <description>Нужно ли очистить consul kv?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>CLEAN_SD</name>
+          <description>Нужно ли очистить consul sd?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.StringParameterDefinition>
+          <name>ANSIBLE_EXTRA_KEYS</name>
+          <description>Дополнительные ключи ansible</description>
+          <trim>false</trim>
+        </hudson.model.StringParameterDefinition>
+      </parameterDefinitions>
+    </hudson.model.ParametersDefinitionProperty>
+  </properties>
+  <definition class="org.jenkinsci.plugins.workflow.cps.CpsFlowDefinition" plugin="workflow-cps@4218.vff679a_5c0f3a_">
+    <script>pipeline {
+	agent any
+	parameters {
+        string(
+            name: &quot;PROJECT_NAME&quot;,
+            description: &quot;Проект для развертывания&quot;
+        )
+        booleanParam(
+            name: &quot;ROLLBACK_MIGRATIONS&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли очичтить бд?&quot;
+        )
+        booleanParam(
+            name: &quot;CLEAN_KV&quot;, 
+            defaultValue: false,
+            description: &quot;Нужно ли очистить consul kv?&quot;
+        )
+        booleanParam(
+            name: &quot;CLEAN_SD&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли очистить consul sd?&quot;
+        )
+        string(
+            name: &quot;ANSIBLE_EXTRA_KEYS&quot;,
+            description: &quot;Дополнительные ключи ansible&quot;
+        )
+    }
+	environment {
+	    VAULT_PASS = credentials(&apos;ansible-vault-password&apos;)
+		PREPARE_CMD = &quot;chmod o-w /workspace/ansible &amp;&amp; cd /workspace/ansible&quot;
+		BASE_ANSIBLE_PARAMS = &quot;-i ../inventory/general -i ../inventory/${params.PROJECT_NAME}/hosts -i ../inventory/${params.PROJECT_NAME}/configuration&quot;
+		ANSIBLE_EXEC = &quot;/root/.local/bin/ansible&quot;
+		ANSIBLE_EXEC_PLAYBOOK = &quot;/root/.local/bin/ansible-playbook&quot;
+		DEPLOY_GROUP = &quot;deploy_db&quot;
+	}
+	stages {
+	    stage(&quot;Test connection&quot;) {
+            steps {
+                script {
+                    withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+                      sh &quot;&quot;&quot;
+                        ${env.PREPARE_CMD} &amp;&amp; \
+                        ${env.ANSIBLE_EXEC} ${env.BASE_ANSIBLE_PARAMS} -m ping ${env.DEPLOY_GROUP} \
+                        ${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
+                        &quot;&quot;&quot;
+                    }
+                }
+            }
+        }
+		stage(&quot;Prepare cleaning&quot;){
+			parallel{
+				stage(&quot;Rollback migrations&quot;) {
+					when {
+						expression { params.ROLLBACK_MIGRATIONS }
+					}
+					steps {
+						script {
+							 withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+							  sh &quot;&quot;&quot;
+								${env.PREPARE_CMD} &amp;&amp; \
+								${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./cleaning/rollback-migrations.yml \
+								${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
+								&quot;&quot;&quot;
+							 }
+						}
+					}
+				}
+				stage(&quot;Clean Consul KV&quot;) {
+					when {
+						expression { params.CLEAN_KV }
+					}
+					steps {
+						script {
+							 withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+							  sh &quot;&quot;&quot;
+								${env.PREPARE_CMD} &amp;&amp; \
+								${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./cleaning/clean-consul-kv.yml \
+								${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
+								&quot;&quot;&quot;
+							 }
+						}
+					}
+				}
+				stage(&quot;Clean Consul SD&quot;) {
+					when {
+						expression { params.CLEAN_SD }
+					}
+					steps {
+						script {
+							 withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+							  sh &quot;&quot;&quot;
+								${env.PREPARE_CMD} &amp;&amp; \
+								${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./cleaning/clean-consul-sd.yml \
+								${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;)
+								&quot;&quot;&quot;
+							 }
+						}
+					}
+				}
+		}	}
+	}
+}</script>
+    <sandbox>true</sandbox>
+  </definition>
+  <triggers/>
+  <disabled>false</disabled>
+</flow-definition>

@@ -7,12 +7,10 @@ INSERT INTO ACCOUNTS.USERS (user_id, username, registered_date) VALUES
 (4, 'anonymous', '2023-04-05 16:20:00'),
 (5, 'booklover', '2023-05-12 11:00:00');
 
--- INSERT INTO ACCOUNTS.TOKEN_TYPES (tt_id, tt_name) VALUES 
--- (1, 'access_token'),
--- (2, 'refresh_token'),
--- (3, 'password_reset'),
--- (4, 'email_verification'),
--- (5, 'api_key');
+INSERT INTO ACCOUNTS.TOKEN_TYPES (tt_id, tt_name) VALUES 
+(1, 'general_acceptance_token'),
+(2, 'verify_email_token'),
+(3, 'reset_password_token'),
 
 -- INSERT INTO ACCOUNTS.TOKENS (ct_id, token_key, till_date, token_type, token_body) VALUES 
 -- (1, '79asd678f6578df86d86af8da', '2024-01-15 10:30:00', 1, ''),
@@ -25,12 +23,12 @@ INSERT INTO ACCOUNTS.USERS (user_id, username, registered_date) VALUES
 -- (8, '323uoyhuoi2h3oiuoho2i2ih3', '2023-06-15 10:30:00', 3, ''),
 -- (9, '5oi3h4huhuiigiuiuuohhoohh', '2023-06-15 10:30:00', 3, '');
 
-INSERT INTO ACCOUNTS.RESET_PASSWORD_REQUESTS (rpr_id, user_id, request_date, token_id) VALUES 
-(1, 2, '2023-05-20 10:30:00', 3),
-(2, 3, '2023-06-01 14:15:00', 6),
-(3, 1, '2023-04-10 09:45:00', 7),
-(4, 4, '2023-07-05 16:30:00', 8),
-(5, 5, '2023-08-12 11:20:00', 9);
+-- INSERT INTO ACCOUNTS.RESET_PASSWORD_REQUESTS (rpr_id, user_id, request_date, token_id) VALUES 
+-- (1, 2, '2023-05-20 10:30:00', 3),
+-- (2, 3, '2023-06-01 14:15:00', 6),
+-- (3, 1, '2023-04-10 09:45:00', 7),
+-- (4, 4, '2023-07-05 16:30:00', 8),
+-- (5, 5, '2023-08-12 11:20:00', 9);
 
 INSERT INTO IMAGES.IMAGE_DATAS (imgd_id, uuid, uploader_id, size) VALUES 
 (1, '11111111-1111-1111-1111-111111111111', 1, 1024),

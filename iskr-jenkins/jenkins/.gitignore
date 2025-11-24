@@ -19,6 +19,7 @@ caches
 fingerprints
 jobs/**/nextBuildNumber
 jobs/**/builds
+jobs/**/workspace*
 workspace
 .owner
 credentials.xml
@@ -32,3 +33,4 @@ jenkins.install.InstallUtil.lastExecVersion
 jenkins.install.UpgradeWizard.state
 jenkins.security.apitoken.ApiTokenPropertyConfiguration.xml
 config.xml
+!jobs/**/config.xml
