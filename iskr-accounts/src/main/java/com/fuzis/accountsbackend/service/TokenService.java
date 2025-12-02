@@ -19,7 +19,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.RestClientException;
 
+import java.io.IOException;
 import java.time.ZonedDateTime;
 import java.util.Objects;
 import java.util.Optional;
@@ -56,7 +58,7 @@ public class TokenService {
         if (token == null) {
             return new ChangeDTO<>(State.Fail_NotFound, "Not able to find the token to redeem", null);
         }
-        if(ZonedDateTime.now().isAfter(token.getTill_date().plusSeconds(ZonedDateTime.))){
+        if(ZonedDateTime.now().isAfter(token.getTill_date())){
             return new ChangeDTO<>(State.Fail_Expired, "Token is expired", null);
         }
         if(Objects.equals(token.getTokenType().getTtName(), "verify_email_token")){
@@ -65,6 +67,7 @@ public class TokenService {
                 if(user.isPresent()) {
                     MultiValueMap<String, String> sso_request_body = new LinkedMultiValueMap<>();
                     sso_request_body.add("X-User-Id", user.get().getUser_id().toString());
+                    sso_request_body.add("Email-Verified", "true");
                     var response = integrationRequest.sendPostRequestIntegration("v1/accounts/verify-email-sso", sso_request_body);
                     if(response.getStatusCode() != HttpStatus.OK){
                         return new ChangeDTO<>(State.Fail, "Unable to set email verification on sso", response.getBody());
@@ -72,8 +75,11 @@ public class TokenService {
                     user.get().getProfile().setEmail_verified(true);
                 }
                 else{
-                    return new ChangeDTO<>(State.Fail_BadData, "Invalid Token", null);
+                    return new ChangeDTO<>(State.Fail_BadData, "Invalid Token, User Not Found", null);
                 }
+            }
+            catch (RestClientException e) {
+                return new ChangeDTO<>(State.Fail_BadData, "Unable to connect to server, error: " + e.getMessage(), null);
             }
             catch (Exception e) {
                 return new ChangeDTO<>(State.Fail_BadData, "Invalid Token", null);

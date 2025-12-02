@@ -27,7 +27,7 @@ public class IntegrationRequest
 
         ResponseEntity<Map> response = restTemplate.postForEntity(
                 "http://" + integrationConfiguration.getIntegrationHost()
-                        + integrationConfiguration.getIntegrationPort()
+                        + ":" + integrationConfiguration.getIntegrationPort()
                         + "/oapi-inner/"
                         + address,
                 request,

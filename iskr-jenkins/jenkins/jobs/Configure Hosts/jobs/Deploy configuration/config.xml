@@ -129,7 +129,7 @@
 						}
 					}
 				}
-				stage(&quot;Install keycloak&quot;) {
+				stage(&quot;Install keycloak configuration&quot;) {
 					when {
 						expression { params.INSTALL_KEYCLOAK_CONFIGURATION }
 					}
@@ -145,7 +145,7 @@
 						}
 					}
 				}
-				stage(&quot;Install rabbit&quot;) {
+				stage(&quot;Install rabbit configuration&quot;) {
 					when {
 						expression { params.INSTALL_RABBIT_CONFIGURATION }
 					}
