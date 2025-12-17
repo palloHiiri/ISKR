@@ -1,0 +1,36 @@
+spring:
+  datasource:
+    url: {{jdbc_string}}?currentSchema=accounts
+    driver-class-name: {{jdbc_driver}}
+  jpa:
+    show-sql: {{show_sql}}
+    properties:
+      hibernate:
+        dialect: {{jdbc_dialect}}
+  rabbitmq: 
+    host: {{rabbitmq_host}}
+    port: {{rabbitmq_port}}
+    username: {{rabbitmq_username}}
+    password: {{rabbitmq_password}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: {{metrics_exposed}}
+      base-path: {{base_metrics_path}}
+  endpoint:
+    health:
+      show-details: {{metrics_show_details}}
+      show-components: {{metrics_show_components}}
+
+logging:
+  level:
+    root: {{log_level}}
+
+rabbitmq:
+  messaging_exchange: {{rabbit_messaging_exchange}}
+
+integration:
+  host: {{integration_host}}
+  port: {{integration_port}}
