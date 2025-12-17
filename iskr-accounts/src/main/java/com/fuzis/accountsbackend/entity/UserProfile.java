@@ -41,4 +41,13 @@ public class UserProfile {
 
     @Enumerated(EnumType.STRING)
     private UserStatus status;
+
+    public UserProfile(User user, String nickname, String email) {
+        this.user = user;
+        this.nickname = nickname;
+        this.email = email;
+        this.email_verified = false;
+        this.profile_description = "";
+        this.status = UserStatus.notBanned;
+    }
 }

@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -27,7 +28,7 @@ public class UnmarshallProcessor implements Processor {
     public void process(Exchange exchange) throws Exception {
         try {
             Map test_map = exchange.getIn().getBody(Map.class);
-            if(test_map != null) return;
+            if(test_map != null) {exchange.getIn().setBody(test_map);return;}
             InputStreamCache cache = exchange.getIn().getBody(InputStreamCache.class);
             String content;
             if (cache == null) {
@@ -36,7 +37,6 @@ public class UnmarshallProcessor implements Processor {
             else{
                 content = new String(cache.readAllBytes(), StandardCharsets.UTF_8);
             }
-
             if (content == null || content.trim().isEmpty()) {
                 return;
             }
@@ -45,11 +45,22 @@ public class UnmarshallProcessor implements Processor {
                 exchange.getIn().setBody(result);
             }
             catch (Exception ignored) {
-                exchange.getIn().setBody(content);
+                try {
+                    List result = objectMapper.readValue(content, List.class);
+                    exchange.getIn().setBody(result);
+                }
+                catch (Exception ignored2) {
+                    List test_list = exchange.getIn().getBody(List.class);
+                    if(test_list != null && !test_list.isEmpty() && test_list.get(0) instanceof Map)
+                    {
+                        exchange.getIn().setBody(test_list);
+                        return;
+                    }
+                    exchange.getIn().setBody(content);
+                }
             }
         }
         catch (Exception ignored) {
-
         }
     }
 }

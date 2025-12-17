@@ -50,8 +50,12 @@ public class ProcessorUtils {
 
         Integer return_code = responseExchange.getMessage().getHeader(Exchange.HTTP_RESPONSE_CODE, Integer.class);
         String response_json = responseExchange.getMessage().getBody(String.class);
-        T response = response_json == null ? null : objectMapper.readValue(response_json, new TypeReference<>() {});
-        exchange.getIn().setBody(response);
+        try {
+            T response = response_json == null ? null : objectMapper.readValue(response_json, new TypeReference<>() {});
+            exchange.getIn().setBody(response);
+        } catch (Exception e) {
+            exchange.getIn().setBody("");
+        }
         return return_code;
     }
 }

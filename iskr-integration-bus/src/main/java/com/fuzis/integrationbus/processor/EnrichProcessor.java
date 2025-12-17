@@ -4,6 +4,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Processor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.time.ZonedDateTime;
@@ -14,8 +15,15 @@ import java.util.Map;
 public class EnrichProcessor implements Processor {
     private static final Logger log = LoggerFactory.getLogger(EnrichProcessor.class);
 
+    private UnmarshallProcessor unmarshallProcessor;
+
+    private EnrichProcessor(@Autowired UnmarshallProcessor unmarshallProcessor) {
+        this.unmarshallProcessor = unmarshallProcessor;
+    }
+
     @Override
     public void process(Exchange exchange) throws Exception {
+        //unmarshallProcessor.process(exchange);
         try {
             Object currentBody = exchange.getIn().getBody();
             Boolean noMeta = exchange.getIn().getHeader("X-No-Meta", Boolean.class);

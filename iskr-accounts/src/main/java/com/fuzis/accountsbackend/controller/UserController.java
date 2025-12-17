@@ -39,33 +39,41 @@ public class UserController {
         return httpUtil.handleServiceResponse(userService.deleteUser(id));
     }
 
+    @PostMapping
+    public ResponseEntity<ChangeDTO<Object>> createUser(@RequestParam @NotBlank String username,
+                                                         @RequestParam @NotBlank String nickname,
+                                                         @RequestParam @NotBlank String password,
+                                                         @RequestParam @NotBlank String email){
+        return httpUtil.handleServiceResponse(userService.createUser(username, nickname, email, password));
+    }
+
     @PutMapping("/{id}/username")
-    public ResponseEntity<ChangeDTO<Object>> changeUsername(@PathVariable @Min(0) Integer id, @RequestParam String username){
+    public ResponseEntity<ChangeDTO<Object>> changeUsername(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String username){
         return httpUtil.handleServiceResponse(userService.changeUsername(id, username));
     }
 
     @PutMapping("/{id}/nickname")
-    public ResponseEntity<ChangeDTO<Object>> changeNickname(@PathVariable @Min(0) Integer id, @RequestParam String nickname){
+    public ResponseEntity<ChangeDTO<Object>> changeNickname(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String nickname){
         return httpUtil.handleServiceResponse(userService.changeNickname(id, nickname));
     }
 
     @PutMapping("/{id}/password")
-    public ResponseEntity<ChangeDTO<Object>> changePassword(@PathVariable @Min(0) Integer id, @RequestParam String password){
+    public ResponseEntity<ChangeDTO<Object>> changePassword(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String password){
         return httpUtil.handleServiceResponse(userService.changePassword(id, password));
     }
 
     @PutMapping("/{id}/email")
-    public ResponseEntity<ChangeDTO<Object>> changeEmail(@PathVariable @Min(0) Integer id, @RequestParam String email){
+    public ResponseEntity<ChangeDTO<Object>> changeEmail(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String email){
         return httpUtil.handleServiceResponse(userService.changeEmail(id, email));
     }
 
     @PutMapping("/{id}/description")
-    public ResponseEntity<ChangeDTO<Object>> changeDescription(@PathVariable @Min(0) Integer id, @RequestParam String description){
+    public ResponseEntity<ChangeDTO<Object>> changeDescription(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String description){
         return httpUtil.handleServiceResponse(userService.changeDescription(id, description));
     }
 
     @PutMapping("/{id}/birth-date")
-    public ResponseEntity<ChangeDTO<Object>> changeBirthDate(@PathVariable @Min(0) Integer id, @RequestParam String birth_date){
+    public ResponseEntity<ChangeDTO<Object>> changeBirthDate(@PathVariable @Min(0) Integer id, @RequestParam @NotBlank String birth_date){
         return httpUtil.handleServiceResponse(userService.changeBirthDate(id, birth_date));
     }
 

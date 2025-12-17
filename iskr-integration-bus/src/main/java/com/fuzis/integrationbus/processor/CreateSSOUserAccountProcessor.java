@@ -17,8 +17,8 @@ import java.util.List;
 import java.util.Map;
 
 @Component
-public class SearchUserProcessor implements Processor {
-    private static final Logger log = LoggerFactory.getLogger(AdminTokenProcessor.class);
+public class CreateSSOUserAccountProcessor implements Processor {
+    private static final Logger log = LoggerFactory.getLogger(CreateSSOUserAccountProcessor.class);
 
     private final SSOConfiguration ssoConfiguration;
 
@@ -29,7 +29,7 @@ public class SearchUserProcessor implements Processor {
     private final AdminTokenProcessor adminTokenProcessor;
 
     @Autowired
-    public SearchUserProcessor(SSOConfiguration ssoConfiguration, CamelContext camelContext, ProcessorUtils processorUtils, AdminTokenProcessor adminTokenProcessor) {
+    public CreateSSOUserAccountProcessor(SSOConfiguration ssoConfiguration, CamelContext camelContext, ProcessorUtils processorUtils, AdminTokenProcessor adminTokenProcessor) {
         this.ssoConfiguration = ssoConfiguration;
         this.producerTemplate = camelContext.createProducerTemplate();
         this.processorUtils =  processorUtils;
@@ -39,19 +39,21 @@ public class SearchUserProcessor implements Processor {
     @Override
     public void process(Exchange exchange) throws Exception {
         this.adminTokenProcessor.process(exchange);
-        log.warn("Search: " + exchange.getIn().getHeader("X-User-ID", String.class));
-        String httpEndpoint = ssoConfiguration.getKeycloakUrl() + "/admin/realms/" + ssoConfiguration.getRealm() + "/users/?"
-                + "firstName=" +exchange.getIn().getHeader("X-User-ID", String.class)+"&exact=true&throwExceptionOnFailure=false";
-        Integer return_code = this.processorUtils.ssoRequest(producerTemplate,exchange,httpEndpoint, new HashMap<>(),Map.of(
+        String httpEndpoint = ssoConfiguration.getKeycloakUrl() + "/admin/realms/" + ssoConfiguration.getRealm() + "/users?throwExceptionOnFailure=false";
+        Map<String, Object> body = new HashMap<>();
+        body.put("username", exchange.getIn().getHeader("Username",  String.class));
+        body.put("email", exchange.getIn().getHeader("Email",  String.class));
+        body.put("firstName", exchange.getIn().getHeader("X-User-Id",  String.class));
+        body.put("lastName", exchange.getIn().getHeader("Nickname",  String.class));
+        body.put("enabled", "true");
+        body.put("groups", List.of("/user"));
+        Integer return_code = this.processorUtils.ssoRequest(producerTemplate,exchange,httpEndpoint, body,Map.of(
                 "Authorization", "Bearer "+exchange.getIn().getHeader("X-Tech-Token"),
-                Exchange.HTTP_METHOD, "GET"
+                Exchange.HTTP_METHOD, "POST"
         ), ProcessorUtils.SSORequestBodyType.JSON);
         exchange.getIn().removeHeader("X-Tech-Token");
-        List<Map<String, Object>> res = exchange.getIn().getBody(List.class);
-        if(return_code != 200 || res == null || res.isEmpty()){
-            throw new ServiceFall("Unable to find client in SSO");
+        if(return_code != 201){
+            throw new ServiceFall("Unable to process creating user in SSO");
         }
-        log.warn("Found: " + res.get(0).get("id"));
-        exchange.getIn().setHeader("X-User-SSO-ID",res.get(0).get("id"));
     }
 }

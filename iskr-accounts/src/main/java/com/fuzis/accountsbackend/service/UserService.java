@@ -12,6 +12,7 @@ import com.fuzis.accountsbackend.util.IntegrationRequest;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -21,7 +22,6 @@ import java.time.ZonedDateTime;
 import java.util.Optional;
 
 @Service
-@Transactional
 public class UserService
 {
     private final UserRepository userRepository;
@@ -132,7 +132,7 @@ public class UserService
             sso_change_body.add("X-User-Id", userId.toString());
             if(key != null) sso_change_body.add(key, value);
             var response_sso = integrationRequest.sendPostRequestIntegration("v1/accounts/"+endpoint, sso_change_body);
-            if (response_sso.getStatusCode() != HttpStatus.NO_CONTENT) {
+            if (response_sso.getStatusCode() != HttpStatus.NO_CONTENT &&  response_sso.getStatusCode() != HttpStatus.OK) {
                 return new ChangeDTO<>(State.Fail, "Unable to update field", response_sso.getBody());
             }
             return new ChangeDTO<>(State.OK, "Field changed successfully", null);
@@ -187,5 +187,47 @@ public class UserService
         profile.setBirth_date(ZonedDateTime.parse(new_birth_date));
         userProfileRepository.save(profile);
         return new  ChangeDTO<>(State.OK, "Field changed successfully", null);
+    }
+
+    public ChangeDTO<Object> createUserDB(String username, String nickname, String email){
+        Optional<User> other_user = userRepository.findUserByUsername(username);
+        if (other_user.isPresent()) return new ChangeDTO<>(State.Fail_Conflict, "Username already taken", null);
+        User new_user = new User(username);
+        userRepository.save(new_user);
+        UserProfile new_user_profile = new UserProfile(new_user, nickname, email);
+        userProfileRepository.save(new_user_profile);
+        return new ChangeDTO<>(State.OK, "", new_user.getUser_id());
+    }
+
+    public ChangeDTO<Object> createUser(String username, String nickname, String email, String password){
+        ChangeDTO<Object> res = createUserDB(username, nickname, email);
+        if(res.getState() != State.OK) return res;
+        Integer user_id = (Integer)res.getKey();
+        try {
+            MultiValueMap<String, String> sso_create_body = new LinkedMultiValueMap<>();
+            sso_create_body.add("X-User-Id", user_id.toString());
+            sso_create_body.add("Email", email);
+            sso_create_body.add("Nickname", nickname);
+            sso_create_body.add("Username", username);
+            var response_sso = integrationRequest.sendPostRequestIntegration("v1/accounts/user/create-sso-account", sso_create_body);
+            if (response_sso.getStatusCode() != HttpStatus.NO_CONTENT) {
+                return new ChangeDTO<>(State.Fail, "Unable to create user sso", response_sso.getBody());
+            }
+            var update_password_res = updateUserSSO(user_id, "New-Password", password, "change-password-sso");
+            if(update_password_res.getState() != State.OK){
+                return new ChangeDTO<>(State.Fail, "Unable to set user password", update_password_res);
+            }
+            var verify_email_sent_res = updateUserSSO(user_id, null, null, "verify-email");
+            if(verify_email_sent_res.getState() != State.OK){
+                return new ChangeDTO<>(State.Fail, "Unable to sent email verification token", verify_email_sent_res);
+            }
+            return new ChangeDTO<>(State.OK, "User created. Verification mail sent.", user_id);
+        }
+        catch (RestClientException e) {
+            return new ChangeDTO<>(State.Fail, "Unable to connect to server, error: " + e.getMessage(), null);
+        }
+        catch (Exception e){
+            return new ChangeDTO<>(State.Fail, "Unexpected error: " + e.getMessage(), null);
+        }
     }
 }

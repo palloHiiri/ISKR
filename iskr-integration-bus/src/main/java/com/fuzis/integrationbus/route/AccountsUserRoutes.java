@@ -26,55 +26,68 @@ public class AccountsUserRoutes extends RouteBuilder {
 
     private final ChangeSSOUserAccountStateProcessor  changeSSOUserAccountStateProcessor;
 
+    private final GetSSOUserAccountRoleProcessor getSSOUserAccountRoleProcessor;
+
+    private final LoginProcessor loginProcessor;
+    private final CreateSSOUserAccountProcessor createSSOUserAccountProcessor;
+
     @Autowired
     public AccountsUserRoutes(ChangeSSOUserDataProcessor changeSSOUserDataProcessor,
                               SearchUserProcessor searchUserProcessor,
                               ChangeSSOUserPasswordProcessor changeSSOUserPasswordProcessor,
-                              ChangeSSOUserAccountStateProcessor changeSSOUserAccountStateProcessor) {
+                              ChangeSSOUserAccountStateProcessor changeSSOUserAccountStateProcessor,
+                              GetSSOUserAccountRoleProcessor getSSOUserAccountRoleProcessor,
+                              LoginProcessor loginProcessor,
+                              CreateSSOUserAccountProcessor createSSOUserAccountProcessor) {
         this.changeSSOUserDataProcessor = changeSSOUserDataProcessor;
         this.searchUserProcessor = searchUserProcessor;
         this.changeSSOUserPasswordProcessor = changeSSOUserPasswordProcessor;
         this.changeSSOUserAccountStateProcessor = changeSSOUserAccountStateProcessor;
+        this.getSSOUserAccountRoleProcessor = getSSOUserAccountRoleProcessor;
+        this.loginProcessor = loginProcessor;
+        this.createSSOUserAccountProcessor = createSSOUserAccountProcessor;
     }
 
     @Override
     public void configure() {
-
         errorHandler(defaultErrorHandler()
                 .maximumRedeliveries(0)
                 .retryAttemptedLogLevel(LoggingLevel.WARN));
 
+        from("platform-http:/oapi/v1/accounts/login?httpMethodRestrict=POST")
+                .routeId("login-user-post-route")
+                .onException(NoRequiredHeader.class)
+                    .handled(true)
+                    .to("direct:bad-request-error-handler")
+                .end()
+                .onException(AuthenticationException.class)
+                    .handled(true)
+                    .to("direct:auth-error-handler")
+                .end()
+                .onException(ServiceFall.class)
+                    .handled(true)
+                    .to("direct:service-error-handler")
+                .end()
+                .process(loginProcessor)
+                .to("direct:finalize-request");
+
         from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=GET")
                 .routeId("accounts-user-get-route")
-                .setHeader("X-Roles-Required", constant("profile-watch"))
+                .setHeader("X-Roles-Required", constant(""))
                 .to("direct:auth")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
                 .setHeader("X-Service", constant("Accounts"))
                 .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-ID}"))
                 .to("direct:sd-call-finalize");
 
-//        from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=PUT")
-//                .routeId("accounts-user-put-route")
-//                .onException(NoRequiredHeader.class)
-//                    .handled(true)
-//                    .to("direct:bad-request-error-handler")
-//                .end()
-//                .onException(AuthenticationException.class)
-//                    .handled(true)
-//                    .to("direct:auth-error-handler")
-//                .end()
-//                .onException(ServiceFall.class)
-//                    .handled(true)
-//                    .to("direct:service-error-handler")
-//                .end()
-//                .setHeader("X-Roles-Required", constant("profile-watch,profile-change"))
-//                .to("direct:auth")
-//                .process(changeSSOUserDataProcessor)
-//                .end();
-//                .setHeader(Exchange.HTTP_METHOD, constant("PUT"))
-//                .setHeader("X-Service", constant("Accounts"))
-//                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-ID}"))
-//                .to("direct:sd-call-finalize");
+        from("platform-http:/oapi/v1/accounts/profile?httpMethodRestrict=GET")
+                .routeId("accounts-profile-get-route")
+                .setHeader("X-Headers-Required", constant("X-User-Change-ID"))
+                .to("direct:check-params")
+                .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+                .setHeader("X-Service", constant("Accounts"))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}"))
+                .to("direct:sd-call-finalize");
 
         from("platform-http:/oapi/v1/accounts/verify-email?httpMethodRestrict=POST")
                 .routeId("accounts-verify-email-route")
@@ -88,6 +101,8 @@ public class AccountsUserRoutes extends RouteBuilder {
 
         from("platform-http:/oapi-inner/v1/accounts/verify-email?httpMethodRestrict=POST")
                 .routeId("accounts-inner-verify-email-route")
+                .setHeader("X-Headers-Required", constant("X-User-ID"))
+                .to("direct:check-params")
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader("X-Service", constant("Accounts"))
                 .setHeader("X-No-Meta", constant(true))
@@ -108,6 +123,8 @@ public class AccountsUserRoutes extends RouteBuilder {
 
         from("platform-http:/oapi-inner/v1/accounts/redeem-token?httpMethodRestrict=POST")
                 .routeId("accounts-inner-redeem-token-route")
+                .setHeader("X-Headers-Required", constant("Token"))
+                .to("direct:check-params")
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader("X-Service", constant("Accounts"))
                 .setHeader("X-No-Meta", constant(true))
@@ -371,8 +388,9 @@ public class AccountsUserRoutes extends RouteBuilder {
                 .setBody(simple("birth_date=${header.New-Birth-Date}"))
                 .to("direct:sd-call-finalize");
 
-        from("platform-http:/oapi/v1/accounts/ban?httpMethodRestrict=POST")
-                .routeId("accounts-user-ban-route")
+
+        from("platform-http:/oapi-inner/v1/accounts/role?httpMethodRestrict=GET")
+                .routeId("accounts-inner-get-account-role-sso-route")
                 .onException(NoRequiredHeader.class)
                     .handled(true)
                     .to("direct:bad-request-error-handler")
@@ -385,38 +403,64 @@ public class AccountsUserRoutes extends RouteBuilder {
                     .handled(true)
                     .to("direct:service-error-handler")
                 .end()
-                .setHeader("X-Headers-Required", constant("X-User-Change-ID"))
+                .setHeader("X-Headers-Required", constant("X-User-ID"))
                 .to("direct:check-params")
-                .setHeader("X-Roles-Required", constant("profile-watch,profile-change,manage-accounts"))
+                .process(searchUserProcessor)
+                .process(getSSOUserAccountRoleProcessor)
+                .setHeader("X-No-Meta", constant(true))
+                .to("direct:finalize-request")
+                .end();
+
+        from("platform-http:/oapi/v1/accounts/role?httpMethodRestrict=GET")
+                .routeId("accounts-get-account-role-sso-route")
+                .onException(NoRequiredHeader.class)
+                    .handled(true)
+                    .to("direct:bad-request-error-handler")
+                .end()
+                .onException(AuthenticationException.class)
+                    .handled(true)
+                    .to("direct:auth-error-handler")
+                .end()
+                .onException(ServiceFall.class)
+                    .handled(true)
+                    .to("direct:service-error-handler")
+                .end()
+                .setHeader("X-Roles-Required", constant("profile-watch"))
                 .to("direct:auth")
-                .setHeader(Exchange.HTTP_METHOD, constant("POST"))
-                .setHeader("X-Service", constant("Accounts"))
-                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/ban"))
+                .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+                .setHeader("X-Service", constant("Integration"))
+                .setHeader("X-Service-Request", simple("oapi-inner/v1/accounts/role"))
                 .setBody(constant(""))
                 .to("direct:sd-call-finalize");
 
-        from("platform-http:/oapi/v1/accounts/unban?httpMethodRestrict=POST")
-                .routeId("accounts-user-unban-route")
+        from("platform-http:/oapi-inner/v1/accounts/user/create-sso-account?httpMethodRestrict=POST")
+                .routeId("accounts-inner-create-sso-account-route")
                 .onException(NoRequiredHeader.class)
                     .handled(true)
                     .to("direct:bad-request-error-handler")
                 .end()
-                .onException(AuthenticationException.class)
+                    .onException(AuthenticationException.class)
                     .handled(true)
-                    .to("direct:auth-error-handler")
+                .to("direct:auth-error-handler")
                 .end()
-                .onException(ServiceFall.class)
+                    .onException(ServiceFall.class)
                     .handled(true)
-                    .to("direct:service-error-handler")
+                .to("direct:service-error-handler")
                 .end()
-                .setHeader("X-Headers-Required", constant("X-User-Change-ID"))
+                .setHeader("X-Headers-Required", constant("X-User-ID,Nickname,Email,Username"))
                 .to("direct:check-params")
-                .setHeader("X-Roles-Required", constant("profile-watch,profile-change,manage-accounts"))
-                .to("direct:auth")
+                .process(createSSOUserAccountProcessor)
+                .end();
+
+        from("platform-http:/oapi/v1/accounts/user?httpMethodRestrict=POST")
+                .routeId("accounts-create-user-route")
+                .setHeader("X-Headers-Required", constant("Nickname,Username,Email,Password"))
+                .to("direct:check-params")
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader("X-Service", constant("Accounts"))
-                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/unban"))
-                .setBody(constant(""))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user"))
+                .setHeader(Exchange.CONTENT_TYPE, constant("application/x-www-form-urlencoded"))
+                .setBody(simple("nickname=${header.Nickname}&username=${header.Username}&email=${header.Email}&password=${header.Password}"))
                 .to("direct:sd-call-finalize");
     }
 }
