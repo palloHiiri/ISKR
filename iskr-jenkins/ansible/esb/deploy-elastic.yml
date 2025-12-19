@@ -1,0 +1,34 @@
+---
+  - name: Deploy elasticsearch
+    hosts: deploy_esb_elastic
+    tasks: 
+      - name: Give access to socket for install user
+        file: 
+          path: "/var/run/docker.sock"
+          state: file 
+          owner: "{{ansible_user}}"
+        become: yes
+      
+      - name: Copy docker build files
+        copy: 
+          src: "/workspace/deploy/elasticsearch/"
+          dest: "{{base_path}}/docker/esb/elasticsearch/"
+
+      - name: Copy docker template 
+        template: 
+          src: "/workspace/templates/esb/elasticsearch.j2"
+          dest: "{{base_path}}/docker/esb/elasticsearch.yml"
+      
+      - name: Build elasticsearch
+        shell: "cd {{base_path}}/docker/ && docker compose -f ./esb/elasticsearch.yml build"
+      
+      - name: Down elasticsearch
+        shell: "cd {{base_path}}/docker/ && docker compose -f ./esb/elasticsearch.yml down"
+
+      - name: Start elasticsearch 
+        shell: |
+          cd {{base_path}}/docker/ && \
+          docker compose -f ./esb/elasticsearch.yml up -d
+        
+
+      

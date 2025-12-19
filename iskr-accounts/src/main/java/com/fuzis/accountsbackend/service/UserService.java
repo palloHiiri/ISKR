@@ -50,15 +50,15 @@ public class UserService
         }
     }
 
-    public SelectDTO<User> getUserData(Integer userId){
+    public ChangeDTO<User> getUserData(Integer userId){
         try {
             Optional<User> user = userRepository.findById(userId);
             return user
-                    .map(value -> new SelectDTO<>(State.OK, value, ""))
-                    .orElseGet(() -> new SelectDTO<>(State.Fail_NotFound, null, "User not found"));
+                    .map(value -> new ChangeDTO<>(State.OK, "User found", value ))
+                    .orElseGet(() -> new ChangeDTO<>(State.Fail_NotFound, "User not found",null));
         }
         catch (Exception e){
-            return new SelectDTO<>(State.Fail, null, "Unexpected error: " + e.getMessage());
+            return new ChangeDTO<>(State.Fail,  "Unexpected error: " + e.getMessage(), null);
         }
     }
 

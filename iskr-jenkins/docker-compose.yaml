@@ -10,6 +10,7 @@ services:
       - ./inventory:/workspace/inventory
       - ./templates:/workspace/templates
       - ./artifacts:/workspace/artifacts
+      - ./deploy:/workspace/deploy
       - ./logs:/workspace/logs
       - //var/run/docker.sock:/var/run/docker.sock
       - ./jenkins:/var/jenkins_home

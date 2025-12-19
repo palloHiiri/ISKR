@@ -1,0 +1,15 @@
+---
+path:
+  data: /usr/share/elasticsearch/data
+  logs: /usr/share/elasticsearch/log
+
+cluster.name: "docker-cluster"
+network.host: 0.0.0.0
+#cluster.initial_master_nodes: ["elastic-1"]
+node.name: elastic-1
+discovery.type: single-node
+discovery.seed_hosts: []
+
+xpack.license.self_generated.type: basic
+xpack.security.enabled: false
+xpack.monitoring.collection.enabled: true

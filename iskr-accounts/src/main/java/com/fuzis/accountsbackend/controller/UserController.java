@@ -30,7 +30,7 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SelectDTO<User>> getUserData(@PathVariable @Min(0) Integer id) {
+    public ResponseEntity<ChangeDTO<User>> getUserData(@PathVariable @Min(0) Integer id) {
         return httpUtil.handleServiceResponse(userService.getUserData(id));
     }
 

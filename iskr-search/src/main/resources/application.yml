@@ -1,0 +1,23 @@
+spring:
+  application:
+    name: ${SERVICE_NAME}
+  config:
+    import: "consul:"
+  cloud:
+    consul:
+      host: ${CONSUL_HOST}
+      port: ${CONSUL_PORT}
+      discovery:
+        instance-id: ${spring.application.name}:${random.uuid}
+        hostname: ${DISCOVERY_HOSTNAME}
+      config:
+        enabled: true
+        defaultContext: ${CONSUL_KV_DEFAULT}
+        format: YAML
+        watch:
+          enabled: true
+  datasource:
+    username: ${PG_USERNAME}
+    password: ${PG_PASSWORD}
+server:
+  port: ${PORT}
