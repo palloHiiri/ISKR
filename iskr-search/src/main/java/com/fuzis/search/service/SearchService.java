@@ -27,7 +27,7 @@ public class SearchService {
     private ElasticsearchOperations elasticsearchOperations;
 
     public SearchResult search(SearchRequest request) {
-        log.info("Search request: {}", request);
+        log.info("Search request: {}, genreId: {}", request, request.getGenreId());
 
         try {
             NativeQuery searchQuery = buildSearchQuery(request);
@@ -84,13 +84,30 @@ public class SearchService {
             boolQueryBuilder.must(multiMatchBuilder.build()._toQuery());
         }
 
-        if (request.getTypes() != null && !request.getTypes().isEmpty()) {
-            TermsQuery.Builder termsBuilder = new TermsQuery.Builder()
+        // Если указан genreId, добавляем фильтр по жанру
+        if (request.getGenreId() != null) {
+            // Терм-запрос для фильтрации по ID жанра
+            TermsQuery.Builder genreTermsBuilder = new TermsQuery.Builder()
+                    .field("genreIds")
+                    .terms(t -> t.value(List.of(FieldValue.of(request.getGenreId()))));
+
+            // Ограничиваем поиск только книгами
+            TermsQuery.Builder typeTermsBuilder = new TermsQuery.Builder()
                     .field("type")
-                    .terms(t -> t.value(request.getTypes().stream()
-                            .map(v -> FieldValue.of(v))
-                            .collect(Collectors.toList())));
-            boolQueryBuilder.filter(termsBuilder.build()._toQuery());
+                    .terms(t -> t.value(List.of(FieldValue.of("book"))));
+
+            boolQueryBuilder.filter(genreTermsBuilder.build()._toQuery());
+            boolQueryBuilder.filter(typeTermsBuilder.build()._toQuery());
+        } else {
+            // Старая логика фильтрации по типам (если не указан genreId)
+            if (request.getTypes() != null && !request.getTypes().isEmpty()) {
+                TermsQuery.Builder termsBuilder = new TermsQuery.Builder()
+                        .field("type")
+                        .terms(t -> t.value(request.getTypes().stream()
+                                .map(FieldValue::of)
+                                .collect(Collectors.toList())));
+                boolQueryBuilder.filter(termsBuilder.build()._toQuery());
+            }
         }
 
         NativeQueryBuilder queryBuilder = NativeQuery.builder()

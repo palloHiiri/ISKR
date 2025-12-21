@@ -44,4 +44,22 @@ public class Book {
 
     @Column(name = "added_by")
     private Integer addedBy;
+
+    @ManyToMany
+    @JoinTable(
+            name = "books_genres",
+            schema = "books",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "genre_id")
+    )
+    private Set<Genre> genres;
+
+    @ManyToMany
+    @JoinTable(
+            name = "books_authors",
+            schema = "books",
+            joinColumns = @JoinColumn(name = "book_id"),
+            inverseJoinColumns = @JoinColumn(name = "author_id")
+    )
+    private Set<Author> authors;
 }

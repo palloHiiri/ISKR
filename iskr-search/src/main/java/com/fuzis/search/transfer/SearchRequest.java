@@ -16,4 +16,5 @@ public class SearchRequest {
     @Builder.Default
     private Integer limit = 10;
     private List<String> types;
+    private Integer genreId;
 }

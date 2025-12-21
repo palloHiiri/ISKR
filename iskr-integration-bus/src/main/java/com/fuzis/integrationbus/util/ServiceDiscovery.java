@@ -51,4 +51,16 @@ public class ServiceDiscovery
         return getServiceUrl("IntegrationBus");
     }
 
+    public String getSearchUrl() throws ServiceDiscoveryFailed{
+        return getServiceUrl("SearchService");
+    }
+
+    public String getBooksUrl() throws ServiceDiscoveryFailed{
+        return getServiceUrl("BooksBackend");
+    }
+
+    public String getImagesUrl() throws ServiceDiscoveryFailed{
+        return getServiceUrl("ImageService");
+    }
+
 }

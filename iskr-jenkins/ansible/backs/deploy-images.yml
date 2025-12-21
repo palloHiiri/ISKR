@@ -1,0 +1,46 @@
+---    
+  - name: Deploy images backend
+    hosts: deploy_back_images
+    tasks: 
+      - name: Copy jar file
+        synchronize:
+          src: "/workspace/artifacts/backend_iskr-images.jar"
+          dest: "{{base_path}}/docker/apps/"
+          mode: push
+          use_ssh_args: yes
+        delegate_to: localhost
+
+      - name: Give access to socket for install user
+        file: 
+          path: "/var/run/docker.sock"
+          state: file 
+          owner: "{{ansible_user}}"
+        become: yes
+
+      - name: Stop images backend 
+        shell: "cd {{base_path}}/docker/ && docker compose -f back_images.yml down"
+        ignore_errors: yes
+
+      - name: Copy docker build template 
+        template: 
+          src: "/workspace/templates/backs/build.j2"
+          dest: "{{base_path}}/docker/build/Dockerfile-Images"
+
+      - name: Copy docker template 
+        template: 
+          src: "/workspace/templates/backs/images.j2"
+          dest: "{{base_path}}/docker/back_images.yml"
+
+      - name: Build images image 
+        shell: |
+          cd {{base_path}}/docker/ && \
+          PG_USER={{pg_user}} \
+          PG_PASSWORD={{pg_password}} \
+          docker compose -f back_images.yml build
+      
+      - name: Start images backend 
+        shell: |
+          cd {{base_path}}/docker/ && \
+          PG_USER={{pg_user}} \
+          PG_PASSWORD={{pg_password}} \
+          docker compose -f back_images.yml up -d

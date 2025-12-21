@@ -1,0 +1,3 @@
+apis:
+  docs/openapi/openapi.yml:
+    alias: user-accounts-api

@@ -1,14 +1,20 @@
 package com.fuzis.search.service;
 
+import com.fuzis.search.entity.Author;
 import com.fuzis.search.entity.Book;
 import com.fuzis.search.entity.BookCollection;
+import com.fuzis.search.entity.Genre;
 import com.fuzis.search.entity.User;
+import com.fuzis.search.entity.elasticsearch.AuthorDocument;
 import com.fuzis.search.entity.elasticsearch.BaseIndexDocument;
 import com.fuzis.search.entity.elasticsearch.BookCollectionDocument;
 import com.fuzis.search.entity.elasticsearch.BookDocument;
+import com.fuzis.search.entity.elasticsearch.GenreDocument;
 import com.fuzis.search.entity.elasticsearch.UserDocument;
+import com.fuzis.search.repository.AuthorRepository;
 import com.fuzis.search.repository.BookCollectionRepository;
 import com.fuzis.search.repository.BookRepository;
+import com.fuzis.search.repository.GenreRepository;
 import com.fuzis.search.repository.UserRepository;
 import com.fuzis.search.repository.elasticsearch.SearchDocumentRepository;
 import jakarta.annotation.PostConstruct;
@@ -45,6 +51,12 @@ public class DataSyncService {
     private BookCollectionRepository collectionRepository;
 
     @Autowired
+    private GenreRepository genreRepository;
+
+    @Autowired
+    private AuthorRepository authorRepository;
+
+    @Autowired
     private SearchDocumentRepository searchDocumentRepository;
 
     @Autowired
@@ -76,6 +88,8 @@ public class DataSyncService {
             syncUsers();
             syncBooks();
             syncCollections();
+            syncGenres();    // Добавляем синхронизацию жанров
+            syncAuthors();   // Добавляем синхронизацию авторов
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Sync finished, time: {} ms", duration);
@@ -134,11 +148,23 @@ public class DataSyncService {
 
         int page = 0;
         List<Book> books;
+        boolean hasNextPage = true;
 
-        do {
+        while (hasNextPage) {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<Book> bookPage = bookRepository.findAll(pageable);
-            books = bookPage.getContent();
+            Page<Book> bookPage = bookRepository.findAllOrderedById(pageable);
+            List<Book> booksWithoutGenres = bookPage.getContent();
+
+            if (booksWithoutGenres.isEmpty()) {
+                log.info("No more books to sync at page {}", page);
+                break;
+            }
+
+            List<Integer> bookIds = booksWithoutGenres.stream()
+                    .map(Book::getBookId)
+                    .collect(Collectors.toList());
+
+            books = bookRepository.findAllWithGenresByIds(bookIds);
 
             if (!books.isEmpty()) {
                 List<BaseIndexDocument> documents = books.stream()
@@ -149,8 +175,14 @@ public class DataSyncService {
                 log.info("Sync {} books (page {})", documents.size(), page + 1);
             }
 
+            hasNextPage = bookPage.hasNext();
             page++;
-        } while (!books.isEmpty());
+
+            if (page > 1000) {
+                log.error("Possible infinite loop detected in syncBooks! Breaking.");
+                break;
+            }
+        }
     }
 
     private void syncCollections() {
@@ -186,13 +218,78 @@ public class DataSyncService {
         } while (!collections.isEmpty());
     }
 
+    private void syncGenres() {
+        log.info("Sync genres...");
+
+        try {
+            searchDocumentRepository.deleteByType("genre");
+        } catch (Exception e) {
+            log.warn("Could not delete genres, maybe index doesn't exist: {}", e.getMessage());
+        }
+
+        IndexOperations indexOps = elasticsearchOperations.indexOps(BaseIndexDocument.class);
+        indexOps.refresh();
+
+        int page = 0;
+        List<Genre> genres;
+
+        do {
+            Pageable pageable = PageRequest.of(page, batchSize);
+            Page<Genre> genrePage = genreRepository.findAll(pageable);
+            genres = genrePage.getContent();
+
+            if (!genres.isEmpty()) {
+                List<BaseIndexDocument> documents = genres.stream()
+                        .map(GenreDocument::fromEntity)
+                        .collect(Collectors.toList());
+
+                searchDocumentRepository.saveAll(documents);
+                log.info("Sync {} genres (page {})", documents.size(), page + 1);
+            }
+
+            page++;
+        } while (!genres.isEmpty());
+    }
+
+    private void syncAuthors() {
+        log.info("Sync authors...");
+
+        try {
+            searchDocumentRepository.deleteByType("author");
+        } catch (Exception e) {
+            log.warn("Could not delete authors, maybe index doesn't exist: {}", e.getMessage());
+        }
+
+        IndexOperations indexOps = elasticsearchOperations.indexOps(BaseIndexDocument.class);
+        indexOps.refresh();
+
+        int page = 0;
+        List<Author> authors;
+
+        do {
+            Pageable pageable = PageRequest.of(page, batchSize);
+            Page<Author> authorPage = authorRepository.findAll(pageable);
+            authors = authorPage.getContent();
+
+            if (!authors.isEmpty()) {
+                List<BaseIndexDocument> documents = authors.stream()
+                        .map(AuthorDocument::fromEntity)
+                        .collect(Collectors.toList());
+
+                searchDocumentRepository.saveAll(documents);
+                log.info("Sync {} authors (page {})", documents.size(), page + 1);
+            }
+
+            page++;
+        } while (!authors.isEmpty());
+    }
+
     private void createIndexIfNotExists() {
         try {
             IndexOperations indexOps = elasticsearchOperations.indexOps(BaseIndexDocument.class);
 
             if (!indexOps.exists()) {
                 log.info("Creating elasticsearch index...");
-                // Создаем индекс с настройками и маппингом
                 indexOps.createWithMapping();
                 log.info("Index created successfully");
             } else {
@@ -200,7 +297,6 @@ public class DataSyncService {
             }
         } catch (Exception e) {
             log.error("Index creation error", e);
-            // В случае ошибки пробуем создать без маппинга
             try {
                 IndexOperations indexOps = elasticsearchOperations.indexOps(IndexCoordinates.of("global_search"));
                 if (!indexOps.exists()) {
@@ -211,9 +307,5 @@ public class DataSyncService {
                 log.error("Failed to create index even without mapping", ex);
             }
         }
-    }
-
-    public void triggerManualSync() {
-        new Thread(() -> syncAllData()).start();
     }
 }

@@ -1,0 +1,6 @@
+---
+  service_name: "ImageService"
+  service_port: "8037"
+  container_name: "images"
+  back_name: "iskr-images"
+  
