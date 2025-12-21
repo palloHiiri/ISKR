@@ -7,6 +7,7 @@ RUN apk add npm
 RUN apk add rsync
 RUN apk add gradle
 RUN apk add maven
+RUN apk add sshpass
 RUN pipx install --include-deps ansible
 RUN pipx ensurepath
 RUN mkdir /home/autodeploy
