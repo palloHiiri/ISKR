@@ -23,7 +23,7 @@
 
       - name: Copy docker build template 
         template: 
-          src: "/workspace/templates/backs/build.j2"
+          src: "/workspace/templates/esb/build_integration.j2"
           dest: "{{base_path}}/docker/build/Dockerfile-Integration"
 
       - name: Copy docker template 

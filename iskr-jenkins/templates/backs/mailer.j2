@@ -1,0 +1,27 @@
+networks:
+    {{network_name}}:
+      external: true
+      name: {{network_name}}
+
+services:
+  mailer:
+    container_name: {{container_name}}
+    build:
+      context: .
+      dockerfile: ./build/Dockerfile-Mailer
+    restart: unless-stopped
+    networks:
+      - {{network_name}}
+    environment:
+      SERVICE_NAME: {{service_name}}
+      PG_USERNAME: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PORT: {{service_port}}
+      CONSUL_HOST: {{consul_host}}
+      CONSUL_PORT: {{consul_port}}
+      DISCOVERY_HOSTNAME: {{discovery_hostname}}
+      CONSUL_KV_DEFAULT: {{consul_default}}
+    ports:
+      - "{{service_port}}:{{service_port}}"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

@@ -1,10 +1,10 @@
 ---    
-  - name: Deploy accounts backend
-    hosts: deploy_back_accounts
+  - name: Deploy mailer backend
+    hosts: deploy_back_mailer
     tasks: 
       - name: Copy jar file
         synchronize:
-          src: "/workspace/artifacts/backend_iskr-accounts.jar"
+          src: "/workspace/artifacts/backend_iskr-mailer.jar"
           dest: "{{base_path}}/docker/apps/"
           mode: push
           use_ssh_args: yes
@@ -17,30 +17,30 @@
           owner: "{{ansible_user}}"
         become: yes
 
-      - name: Stop accounts backend 
-        shell: "cd {{base_path}}/docker/ && docker compose -f back_accounts.yml down"
+      - name: Stop mailer backend 
+        shell: "cd {{base_path}}/docker/ && docker compose -f back_mailer.yml down"
         ignore_errors: yes
 
       - name: Copy docker build template 
         template: 
           src: "/workspace/templates/backs/build.j2"
-          dest: "{{base_path}}/docker/build/Dockerfile-Accounts"
+          dest: "{{base_path}}/docker/build/Dockerfile-Mailer"
 
       - name: Copy docker template 
         template: 
-          src: "/workspace/templates/backs/accounts.j2"
-          dest: "{{base_path}}/docker/back_accounts.yml"
+          src: "/workspace/templates/backs/mailer.j2"
+          dest: "{{base_path}}/docker/back_mailer.yml"
 
-      - name: Build accounts image 
+      - name: Build mailer image 
         shell: |
           cd {{base_path}}/docker/ && \
           PG_USER={{pg_user}} \
           PG_PASSWORD={{pg_password}} \
-          docker compose -f back_accounts.yml build
+          docker compose -f back_mailer.yml build
       
-      - name: Start accounts backend 
+      - name: Start mailer backend 
         shell: |
           cd {{base_path}}/docker/ && \
           PG_USER={{pg_user}} \
           PG_PASSWORD={{pg_password}} \
-          docker compose -f back_accounts.yml up -d
+          docker compose -f back_mailer.yml up -d

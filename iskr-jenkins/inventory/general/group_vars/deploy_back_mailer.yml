@@ -1,0 +1,6 @@
+---
+  service_name: "Mailer"
+  service_port: "8034"
+  container_name: "mailer"
+  back_name: "iskr-mailer"
+  

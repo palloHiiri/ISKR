@@ -4,6 +4,14 @@ spring:
     port: {{rabbitmq_port}}
     username: {{rabbitmq_username}}
     password: {{rabbitmq_password}}
+  
+  mail:
+    host: {{smtp_host}}
+    port: {{smtp_port}}
+    username: {{smtp_login}}
+    password: {{smtp_token}}
+    protocol: {{smtp_protocol}}
+    from: {{smtp_from}}
 
 management:
   endpoints:
@@ -21,8 +29,11 @@ logging:
     root: {{log_level}}
 
 rabbitmq:
-  messaging_queue: {{rabbit_messaging_queue_email}}
+  rabbit_messaging_queue_email: {{rabbit_messaging_queue_email}}
 
-integration:
-  host: {{integration_host}}
-  port: {{integration_port}}
+thymeleaf:
+  prefix: classpath:/templates/
+  suffix: .html
+  mode: HTML
+  encoding: UTF-8
+  cache: false

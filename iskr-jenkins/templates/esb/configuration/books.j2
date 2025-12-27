@@ -1,0 +1,28 @@
+spring:
+  datasource:
+    url: {{jdbc_string}}?currentSchema=accounts
+    driver-class-name: {{jdbc_driver}}
+  jpa:
+    show-sql: {{show_sql}}
+    properties:
+      hibernate:
+        dialect: {{jdbc_dialect}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: {{metrics_exposed}}
+      base-path: {{base_metrics_path}}
+  endpoint:
+    health:
+      show-details: {{metrics_show_details}}
+      show-components: {{metrics_show_components}}
+
+logging:
+  level:
+    root: {{log_level}}
+
+integration:
+  host: {{integration_host}}
+  port: {{integration_port}}

@@ -31,5 +31,53 @@
           --request PUT \
           --data-binary @integration.yml \
           http://localhost:{{consul_port}}/v1/kv/config/IntegrationBus/data
+      
+      - name: Copy mailer configuration
+        template: 
+           src: "/workspace/templates/esb/configuration/mailer.j2"
+           dest: "{{base_path}}/configuration/mailer.yml"
+
+      - name: Load mailer configuration 
+        shell: |
+          cd {{base_path}}/configuration && curl \
+          --request PUT \
+          --data-binary @mailer.yml \
+          http://localhost:{{consul_port}}/v1/kv/config/Mailer/data
+      
+      - name: Copy search configuration
+        template: 
+           src: "/workspace/templates/esb/configuration/search.j2"
+           dest: "{{base_path}}/configuration/search.yml"
+
+      - name: Load search configuration 
+        shell: |
+          cd {{base_path}}/configuration && curl \
+          --request PUT \
+          --data-binary @search.yml \
+          http://localhost:{{consul_port}}/v1/kv/config/SearchService/data
+      
+      - name: Copy books configuration
+        template: 
+           src: "/workspace/templates/esb/configuration/books.j2"
+           dest: "{{base_path}}/configuration/books.yml"
+
+      - name: Load books configuration 
+        shell: |
+          cd {{base_path}}/configuration && curl \
+          --request PUT \
+          --data-binary @books.yml \
+          http://localhost:{{consul_port}}/v1/kv/config/BooksBackend/data
+      
+      - name: Copy images configuration
+        template: 
+           src: "/workspace/templates/esb/configuration/images.j2"
+           dest: "{{base_path}}/configuration/images.yml"
+
+      - name: Load images configuration 
+        shell: |
+          cd {{base_path}}/configuration && curl \
+          --request PUT \
+          --data-binary @images.yml \
+          http://localhost:{{consul_port}}/v1/kv/config/ImageService/data
         
       

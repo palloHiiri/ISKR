@@ -1,0 +1,6 @@
+---
+  service_name: "SearchService"
+  service_port: "8036"
+  container_name: "search"
+  back_name: "iskr-search"
+  

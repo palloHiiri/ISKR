@@ -7,7 +7,7 @@ CREATE SCHEMA BOOKS;
 CREATE TABLE IMAGES.IMAGE_DATAS(
     imgd_id SERIAL PRIMARY KEY, 
     uuid CHAR(36) NOT NULL UNIQUE,
-    uploader_id INTEGER NOT NULL,
+    uploader_id INTEGER,
     size INTEGER NOT NULL,
     mime_type VARCHAR(100) NOT NULL,
     extension VARCHAR(10) NOT NULL,

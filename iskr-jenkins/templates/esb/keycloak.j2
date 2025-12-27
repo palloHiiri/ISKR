@@ -10,16 +10,15 @@ services:
     environment:
       KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN}
       KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD}
-      KC_HTTP_ENABLED: true
-      KC_HOSTNAME_STRICT: false
-      KC_HOSTNAME_STRICT_HTTPS: false
+      KC_HTTP_ENABLED: "true"
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_DB: {{keykloak_db}}
       KC_DB_URL: {{keykloak_db_jdbc_string}}
       KC_DB_USERNAME: ${KEYCLOAK_DB_USERNAME}
       KC_DB_PASSWORD: ${KEYCLOAK_DB_PASSWORD}
-      KC_PROXY: edge
-    command:
-      - start
+      KC_PROXY: "none"
+    command: start-dev
     ports:
       - "{{keykloak_port}}:{{keykloak_port}}"
     networks:

@@ -35,4 +35,12 @@
             <sqlFile path="v3_rollback.sql" relativeToChangelogFile="true"/>
         </rollback>
     </changeSet>
+    <changeSet id="base-token-types-4" author="fuzis" runInTransaction="true">
+        <sqlFile path="v4_base_token_types.sql"
+                 relativeToChangelogFile="true"
+                 splitStatements="false"/>
+        <rollback>
+            <sqlFile path="v4_rollback.sql" relativeToChangelogFile="true"/>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>

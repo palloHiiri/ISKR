@@ -1,0 +1,33 @@
+spring:
+  datasource:
+    url: {{jdbc_string}}
+    driver-class-name: {{jdbc_driver}}
+  jpa:
+    show-sql: {{show_sql}}
+    properties:
+      hibernate:
+        dialect: {{jdbc_dialect}}
+  elasticsearch:
+    uris: http://{{elasticsearch_host}}:{{elasticsearch_port}}
+    connection-timeout: {{elasticsearch_timeouts}}
+    socket-timeout: {{elasticsearch_timeouts}}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: {{metrics_exposed}}
+      base-path: {{base_metrics_path}}
+  endpoint:
+    health:
+      show-details: {{metrics_show_details}}
+      show-components: {{metrics_show_components}}
+
+logging:
+  level:
+    root: {{log_level}}
+
+sync:
+  enabled: {{search_sync_enabled}}
+  cron: {{search_sync_cron}}
+  batch-size: {{search_sync_batch}}
