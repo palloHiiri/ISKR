@@ -3,27 +3,29 @@ package com.fuzis.booksbackend.util;
 import com.fuzis.booksbackend.transfer.ChangeDTO;
 import com.fuzis.booksbackend.transfer.state.State;
 import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.servlet.NoHandlerFoundException;
 
 import java.time.format.DateTimeParseException;
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
-
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ChangeDTO<Object>> handleValidationExceptions(MethodArgumentNotValidException ex) {
@@ -35,23 +37,23 @@ public class GlobalExceptionHandler {
         });
 
         String errorMessage = "Validation failed: " + String.join(", ", errors.values());
-        logger.warn("Validation error: {}", errorMessage);
+        log.warn("Validation error: {}", errorMessage);
 
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ChangeDTO<>(State.Fail, errorMessage, null));
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, errors));
     }
 
     @ExceptionHandler(DataAccessException.class)
     public ResponseEntity<ChangeDTO<Object>> handleDatabaseExceptions(DataAccessException ex) {
-        logger.error("Database error occurred: ", ex);
+        log.error("Database error occurred", ex);
 
         if (ex instanceof DataIntegrityViolationException) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
                     .body(new ChangeDTO<>(
-                            State.Fail,
-                            "Database integrity violation: " + ex.getMessage(),
+                            State.Fail_Conflict,
+                            "Database integrity violation: " + ex.getMostSpecificCause().getMessage(),
                             null
                     ));
         }
@@ -60,7 +62,7 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ChangeDTO<>(
                         State.Fail,
-                        "Database operation failed: " + ex.getMessage(),
+                        "Database operation failed",
                         null
                 ));
     }
@@ -79,15 +81,16 @@ public class GlobalExceptionHandler {
                     "Invalid date/time format: '%s'. Expected format: yyyy-MM-ddTHH:mm:ssZ or yyyy-MM-dd",
                     dateTimeEx.getParsedString()
             );
-        } else {
+        } else if (ex instanceof HttpMessageNotReadableException) {
             errorMessage = "Invalid request body format. Please check your input.";
+        } else {
+            errorMessage = "Invalid request format";
         }
 
-        logger.warn("Date parsing error: {}", errorMessage);
-
+        log.warn("Request parsing error: {}", errorMessage, ex);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ChangeDTO<>(State.Fail, errorMessage, null));
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, null));
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
@@ -99,33 +102,93 @@ public class GlobalExceptionHandler {
                 ex.getRequiredType() != null ? ex.getRequiredType().getSimpleName() : "unknown"
         );
 
-        logger.warn("Type mismatch error: {}", errorMessage);
-
+        log.warn("Type mismatch error: {}", errorMessage);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ChangeDTO<>(State.Fail, errorMessage, null));
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, null));
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ChangeDTO<Object>> handleConstraintViolationExceptions(ConstraintViolationException ex) {
         String errorMessage = "Validation failed: " + ex.getMessage();
 
-        logger.warn("Constraint violation: {}", errorMessage);
-
+        log.warn("Constraint violation: {}", errorMessage);
         return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, null));
+    }
+
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    public ResponseEntity<ChangeDTO<Object>> handleHttpMediaTypeNotSupportedException(HttpMediaTypeNotSupportedException ex) {
+        String errorMessage = String.format(
+                "Unsupported media type: %s. Supported types: %s",
+                ex.getContentType(),
+                ex.getSupportedMediaTypes()
+        );
+
+        log.warn("Media type not supported: {}", errorMessage);
+        return ResponseEntity
+                .status(HttpStatus.UNSUPPORTED_MEDIA_TYPE)
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, null));
+    }
+
+    @ExceptionHandler(MissingServletRequestParameterException.class)
+    public ResponseEntity<ChangeDTO<Object>> handleMissingParameterException(MissingServletRequestParameterException ex) {
+        String errorMessage = String.format(
+                "Missing required parameter: %s",
+                ex.getParameterName()
+        );
+
+        log.warn("Missing parameter: {}", errorMessage);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(new ChangeDTO<>(State.Fail_BadData, errorMessage, null));
+    }
+
+    @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ChangeDTO<Object>> handleMethodNotSupportedException(HttpRequestMethodNotSupportedException ex) {
+        String errorMessage = String.format(
+                "Method %s is not supported for this endpoint. Supported methods: %s",
+                ex.getMethod(),
+                ex.getSupportedHttpMethods()
+        );
+
+        log.warn("Method not supported: {}", errorMessage);
+        return ResponseEntity
+                .status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(new ChangeDTO<>(State.Fail, errorMessage, null));
     }
 
+    @ExceptionHandler(NoHandlerFoundException.class)
+    public ResponseEntity<ChangeDTO<Object>> handleNotFoundException(NoHandlerFoundException ex) {
+        String errorMessage = String.format(
+                "Endpoint %s %s not found",
+                ex.getHttpMethod(),
+                ex.getRequestURL()
+        );
+
+        log.warn("Endpoint not found: {}", errorMessage);
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(new ChangeDTO<>(State.Fail_NotFound, errorMessage, null));
+    }
+
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ChangeDTO<Object>> handleGeneralExceptions(Exception ex) {
-        logger.error("Unexpected error occurred: ", ex);
+    public ResponseEntity<ChangeDTO<Object>> handleGenericExceptions(Exception ex) {
+        log.error("Unhandled exception occurred", ex);
+
+        // Return detailed error message to client
+        String errorMessage = String.format(
+                "Internal server error: %s - %s",
+                ex.getClass().getSimpleName(),
+                ex.getMessage()
+        );
 
         return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(new ChangeDTO<>(
                         State.Fail,
-                        "An unexpected error occurred. Please contact support.",
+                        errorMessage,
                         null
                 ));
     }

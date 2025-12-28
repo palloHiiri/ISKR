@@ -116,17 +116,4 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.BAD_REQUEST)
                 .body(new ChangeDTO<>(State.Fail, errorMessage, null));
     }
-
-    @ExceptionHandler(Exception.class)
-    public ResponseEntity<ChangeDTO<Object>> handleGeneralExceptions(Exception ex) {
-        logger.error("Unexpected error occurred: ", ex);
-
-        return ResponseEntity
-                .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ChangeDTO<>(
-                        State.Fail,
-                        "An unexpected error occurred. Please contact support.",
-                        null
-                ));
-    }
 }
