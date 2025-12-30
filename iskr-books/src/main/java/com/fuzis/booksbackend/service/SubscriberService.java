@@ -1,7 +1,9 @@
 package com.fuzis.booksbackend.service;
 
 import com.fuzis.booksbackend.entity.Subscriber;
+import com.fuzis.booksbackend.entity.User;
 import com.fuzis.booksbackend.repository.SubscriberRepository;
+import com.fuzis.booksbackend.repository.UserRepository;
 import com.fuzis.booksbackend.transfer.ChangeDTO;
 import com.fuzis.booksbackend.transfer.state.State;
 import lombok.RequiredArgsConstructor;
@@ -11,9 +13,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -21,7 +25,9 @@ import java.util.Map;
 public class SubscriberService {
 
     private final SubscriberRepository subscriberRepository;
+    private final UserRepository userRepository;
 
+    @Transactional
     public ChangeDTO<Object> subscribe(Integer userId, Integer userOnId) {
         try {
             log.info("User {} subscribing to user {}", userId, userOnId);
@@ -33,8 +39,18 @@ public class SubscriberService {
                         "Cannot subscribe to yourself", null);
             }
 
+            // Check if users exist
+            Optional<User> subsUserOpt = userRepository.findById(userId);
+            Optional<User> subsUserOnOpt = userRepository.findById(userOnId);
+
+            if (subsUserOpt.isEmpty() || subsUserOnOpt.isEmpty()) {
+                log.warn("One or both users not found: user {} -> user {}", userId, userOnId);
+                return new ChangeDTO<>(State.Fail_NotFound,
+                        "One or both users not found", null);
+            }
+
             // Check if subscription already exists
-            if (subscriberRepository.existsBySubsUserIdAndSubsUserOnId(userId, userOnId)) {
+            if (subscriberRepository.existsBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get())) {
                 log.warn("Subscription already exists: user {} -> user {}", userId, userOnId);
                 return new ChangeDTO<>(State.Fail_Conflict,
                         "Already subscribed to this user", null);
@@ -42,8 +58,8 @@ public class SubscriberService {
 
             // Create subscription
             Subscriber subscriber = Subscriber.builder()
-                    .subsUserId(userId)
-                    .subsUserOnId(userOnId)
+                    .subsUser(subsUserOpt.get())
+                    .subsUserOn(subsUserOnOpt.get())
                     .build();
 
             Subscriber savedSubscriber = subscriberRepository.save(subscriber);
@@ -62,19 +78,30 @@ public class SubscriberService {
         }
     }
 
+    @Transactional
     public ChangeDTO<Object> unsubscribe(Integer userId, Integer userOnId) {
         try {
             log.info("User {} unsubscribing from user {}", userId, userOnId);
 
+            // Check if users exist
+            Optional<User> subsUserOpt = userRepository.findById(userId);
+            Optional<User> subsUserOnOpt = userRepository.findById(userOnId);
+
+            if (subsUserOpt.isEmpty() || subsUserOnOpt.isEmpty()) {
+                log.warn("One or both users not found: user {} -> user {}", userId, userOnId);
+                return new ChangeDTO<>(State.Fail_NotFound,
+                        "One or both users not found", null);
+            }
+
             // Check if subscription exists
-            if (!subscriberRepository.existsBySubsUserIdAndSubsUserOnId(userId, userOnId)) {
+            if (!subscriberRepository.existsBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get())) {
                 log.warn("Subscription not found: user {} -> user {}", userId, userOnId);
                 return new ChangeDTO<>(State.Fail_NotFound,
                         "Subscription not found", null);
             }
 
             // Delete subscription
-            subscriberRepository.deleteBySubsUserIdAndSubsUserOnId(userId, userOnId);
+            subscriberRepository.deleteBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get());
             log.info("Subscription deleted successfully: user {} -> user {}", userId, userOnId);
 
             return new ChangeDTO<>(State.OK,
@@ -99,7 +126,7 @@ public class SubscriberService {
             }
 
             Pageable pageable = PageRequest.of(page, batch);
-            Page<Subscriber> subscriptionsPage = subscriberRepository.findSubscriptionsByUserId(userId, pageable);
+            Page<Subscriber> subscriptionsPage = subscriberRepository.findBySubsUser_UserId(userId, pageable);
 
             // Create response
             Map<String, Object> response = new HashMap<>();
@@ -139,7 +166,7 @@ public class SubscriberService {
             }
 
             Pageable pageable = PageRequest.of(page, batch);
-            Page<Subscriber> subscribersPage = subscriberRepository.findSubscribersByUserId(userId, pageable);
+            Page<Subscriber> subscribersPage = subscriberRepository.findBySubsUserOn_UserId(userId, pageable);
 
             // Create response
             Map<String, Object> response = new HashMap<>();
@@ -171,7 +198,16 @@ public class SubscriberService {
         try {
             log.debug("Checking if user {} is subscribed to user {}", userId, userOnId);
 
-            boolean isSubscribed = subscriberRepository.existsBySubsUserIdAndSubsUserOnId(userId, userOnId);
+            Optional<User> subsUserOpt = userRepository.findById(userId);
+            Optional<User> subsUserOnOpt = userRepository.findById(userOnId);
+
+            if (subsUserOpt.isEmpty() || subsUserOnOpt.isEmpty()) {
+                return new ChangeDTO<>(State.Fail_NotFound,
+                        "One or both users not found", null);
+            }
+
+            boolean isSubscribed = subscriberRepository.existsBySubsUserAndSubsUserOn(
+                    subsUserOpt.get(), subsUserOnOpt.get());
 
             Map<String, Object> response = new HashMap<>();
             response.put("userId", userId);
@@ -199,7 +235,7 @@ public class SubscriberService {
         try {
             log.debug("Counting subscribers for user {}", userId);
 
-            long count = subscriberRepository.countSubscribersByUserId(userId);
+            long count = subscriberRepository.countBySubsUserOn_UserId(userId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("userId", userId);
@@ -220,7 +256,7 @@ public class SubscriberService {
         try {
             log.debug("Counting subscriptions for user {}", userId);
 
-            long count = subscriberRepository.countSubscriptionsByUserId(userId);
+            long count = subscriberRepository.countBySubsUser_UserId(userId);
 
             Map<String, Object> response = new HashMap<>();
             response.put("userId", userId);

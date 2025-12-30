@@ -62,5 +62,4 @@ public class ServiceDiscovery
     public String getImagesUrl() throws ServiceDiscoveryFailed{
         return getServiceUrl("ImageService");
     }
-
 }

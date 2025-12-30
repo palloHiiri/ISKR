@@ -1,29 +1,26 @@
-// Author.java (добавим @JsonIgnore на поле books)
 package com.fuzis.booksbackend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.Set;
 
 @Entity
-@Table(name = "authors", schema = "books")
-@Getter
-@Setter
+@Table(name = "AUTHORS", schema = "BOOKS")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@ToString(exclude = "books")
-@EqualsAndHashCode(exclude = "books")
 public class Author {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "author_id")
     private Integer authorId;
 
-    @Column(name = "name")
+    @Column(name = "name", nullable = false)
     private String name;
 
     @Column(name = "birth_date")
@@ -34,8 +31,4 @@ public class Author {
 
     @Column(name = "real_name")
     private String realName;
-
-    @JsonIgnore
-    @ManyToMany(mappedBy = "authors")
-    private Set<Book> books;
 }

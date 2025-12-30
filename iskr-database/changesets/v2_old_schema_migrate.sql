@@ -94,7 +94,7 @@ CREATE TABLE BOOKS.BOOK_REVIEWS(
     review_text TEXT, 
     FOREIGN KEY (user_id) REFERENCES ACCOUNTS.USERS(user_id), 
     FOREIGN KEY (book_id) REFERENCES BOOKS.BOOKS(book_id),
-    CHECK (score > 0 AND score < 10)
+    CHECK (score > 0 AND score <= 10)
 );
 CREATE TABLE BOOKS.READING_GOALS(
     pgoal_id SERIAL PRIMARY KEY,
@@ -123,7 +123,9 @@ CREATE TABLE BOOKS.BOOK_COLLECTIONS(
     description TEXT,
     confidentiality BOOKS.CONFIDENTIALITY NOT NULL,
     book_collection_type BOOKS.COLLECTION_TYPE NOT NULL, 
-    FOREIGN KEY (owner_id) REFERENCES ACCOUNTS.USERS(user_id)
+    photo_link INTEGER UNIQUE, 
+    FOREIGN KEY (owner_id) REFERENCES ACCOUNTS.USERS(user_id),
+    FOREIGN KEY (photo_link) REFERENCES IMAGES.IMAGE_LINKS(imgl_id)
 );
 CREATE TABLE BOOKS.BOOKS_BOOK_COLLECTIONS(
     c_book_bcol_id SERIAL PRIMARY KEY,

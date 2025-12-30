@@ -1,11 +1,11 @@
 package com.fuzis.booksbackend.service;
 
-import com.fuzis.booksbackend.entity.Author;
-import com.fuzis.booksbackend.entity.Book;
-import com.fuzis.booksbackend.entity.Genre;
+import com.fuzis.booksbackend.entity.*;
 import com.fuzis.booksbackend.repository.AuthorRepository;
 import com.fuzis.booksbackend.repository.BookRepository;
 import com.fuzis.booksbackend.repository.GenreRepository;
+import com.fuzis.booksbackend.repository.UserRepository;
+import com.fuzis.booksbackend.repository.ImageLinkRepository;
 import com.fuzis.booksbackend.transfer.BookCreateDTO;
 import com.fuzis.booksbackend.transfer.BookUpdateDTO;
 import com.fuzis.booksbackend.transfer.ChangeDTO;
@@ -17,11 +17,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 @Slf4j
 @Service
@@ -31,7 +33,10 @@ public class BookService {
     private final BookRepository bookRepository;
     private final AuthorRepository authorRepository;
     private final GenreRepository genreRepository;
+    private final UserRepository userRepository;
+    private final ImageLinkRepository imageLinkRepository;
 
+    @Transactional
     public ChangeDTO<Object> createBook(BookCreateDTO dto) {
         try {
             log.info("Creating book with title: {}", dto.getTitle());
@@ -47,7 +52,8 @@ public class BookService {
 
             // Validate photoLink uniqueness if provided
             if (dto.getPhotoLink() != null) {
-                if (bookRepository.existsByPhotoLink(dto.getPhotoLink())) {
+                Optional<ImageLink> photoLinkOpt = imageLinkRepository.findById(dto.getPhotoLink());
+                if (photoLinkOpt.isPresent() && bookRepository.existsByPhotoLink_ImglId(photoLinkOpt.get().getImglId())) {
                     log.warn("Book with photoLink {} already exists", dto.getPhotoLink());
                     return new ChangeDTO<>(State.Fail_Conflict,
                             "Book with this photo link already exists", null);
@@ -60,6 +66,26 @@ public class BookService {
                         dto.getTitle(), dto.getSubtitle());
                 return new ChangeDTO<>(State.Fail_Conflict,
                         "A book with this title and subtitle combination already exists", null);
+            }
+
+            // Fetch addedBy user
+            Optional<User> addedByUserOpt = userRepository.findById(dto.getAddedBy());
+            if (addedByUserOpt.isEmpty()) {
+                log.warn("User not found with ID: {}", dto.getAddedBy());
+                return new ChangeDTO<>(State.Fail_NotFound,
+                        "User with specified ID does not exist", null);
+            }
+
+            // Fetch photoLink if provided
+            ImageLink photoLink = null;
+            if (dto.getPhotoLink() != null) {
+                Optional<ImageLink> photoLinkOpt = imageLinkRepository.findById(dto.getPhotoLink());
+                if (photoLinkOpt.isEmpty()) {
+                    log.warn("ImageLink not found with ID: {}", dto.getPhotoLink());
+                    return new ChangeDTO<>(State.Fail_NotFound,
+                            "Image with specified photo link does not exist", null);
+                }
+                photoLink = photoLinkOpt.get();
             }
 
             // Fetch authors by IDs
@@ -91,8 +117,8 @@ public class BookService {
                     .isbn(dto.getIsbn())
                     .description(dto.getDescription())
                     .pageCnt(dto.getPageCnt())
-                    .photoLink(dto.getPhotoLink())
-                    .addedBy(dto.getAddedBy())
+                    .photoLink(photoLink)
+                    .addedBy(addedByUserOpt.get())
                     .authors(new HashSet<>(authors))
                     .genres(new HashSet<>(genres))
                     .build();
@@ -135,6 +161,7 @@ public class BookService {
         }
     }
 
+    @Transactional
     public ChangeDTO<Object> updateBook(Integer id, BookUpdateDTO dto) {
         try {
             log.info("Updating book with ID: {}", id);
@@ -170,9 +197,19 @@ public class BookService {
                         }
 
                         // Check photoLink uniqueness if changed
-                        if (dto.getPhotoLink() != null && (book.getPhotoLink() == null
-                                || !dto.getPhotoLink().equals(book.getPhotoLink()))) {
-                            if (bookRepository.existsByPhotoLinkAndBookIdNot(dto.getPhotoLink(), id)) {
+                        if (dto.getPhotoLink() != null) {
+                            Optional<ImageLink> newPhotoLinkOpt = imageLinkRepository.findById(dto.getPhotoLink());
+                            if (newPhotoLinkOpt.isEmpty()) {
+                                log.warn("ImageLink not found with ID: {}", dto.getPhotoLink());
+                                return new ChangeDTO<>(State.Fail_NotFound,
+                                        "Image with specified photo link does not exist", null);
+                            }
+
+                            ImageLink newPhotoLink = newPhotoLinkOpt.get();
+                            boolean photoLinkChanged = book.getPhotoLink() == null
+                                    || !book.getPhotoLink().getImglId().equals(newPhotoLink.getImglId());
+
+                            if (photoLinkChanged && bookRepository.existsByPhotoLinkAndBookIdNot(newPhotoLink.getImglId(), id)) {
                                 log.warn("Book with photoLink {} already exists", dto.getPhotoLink());
                                 return new ChangeDTO<>(State.Fail_Conflict,
                                         "Book with this photo link already exists", null);
@@ -195,8 +232,15 @@ public class BookService {
                         if (dto.getPageCnt() != null) {
                             book.setPageCnt(dto.getPageCnt());
                         }
+
+                        // Update photoLink if provided
                         if (dto.getPhotoLink() != null) {
-                            book.setPhotoLink(dto.getPhotoLink());
+                            Optional<ImageLink> photoLinkOpt = imageLinkRepository.findById(dto.getPhotoLink());
+                            if (photoLinkOpt.isPresent()) {
+                                book.setPhotoLink(photoLinkOpt.get());
+                            } else {
+                                book.setPhotoLink(null);
+                            }
                         }
 
                         // Update authors if provided
@@ -246,6 +290,7 @@ public class BookService {
         }
     }
 
+    @Transactional
     public ChangeDTO<Object> deleteBook(Integer id) {
         try {
             log.info("Deleting book with ID: {}", id);

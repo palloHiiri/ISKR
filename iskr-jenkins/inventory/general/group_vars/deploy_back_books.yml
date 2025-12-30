@@ -1,0 +1,6 @@
+---
+  service_name: "BooksBackend"
+  service_port: "8035"
+  container_name: "books"
+  back_name: "iskr-books"
+  

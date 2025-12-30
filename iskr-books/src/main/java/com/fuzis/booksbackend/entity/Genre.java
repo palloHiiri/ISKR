@@ -1,31 +1,23 @@
-// Genre.java (добавим @JsonIgnore на поле books)
 package com.fuzis.booksbackend.entity;
 
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.*;
-
-import java.util.Set;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "genres", schema = "books")
-@Getter
-@Setter
+@Table(name = "GENRES", schema = "BOOKS")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@ToString(exclude = "books")
-@EqualsAndHashCode(exclude = "books")
 public class Genre {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "genre_id")
     private Integer genreId;
 
-    @Column(name = "name")
+    @Column(name = "name", nullable = false, unique = true)
     private String name;
-
-    @JsonIgnore
-    @ManyToMany(mappedBy = "genres")
-    private Set<Book> books;
 }

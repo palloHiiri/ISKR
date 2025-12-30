@@ -8,6 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -26,7 +27,7 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
 
     boolean existsByIsbn(String isbn);
 
-    boolean existsByPhotoLink(Integer photoLink);
+    boolean existsByPhotoLink_ImglId(Integer photoLink);
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
             "FROM Book b WHERE b.title = :title AND " +
@@ -43,7 +44,7 @@ public interface BookRepository extends JpaRepository<Book, Integer> {
                                                  @Param("bookId") Integer bookId);
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END " +
-            "FROM Book b WHERE b.photoLink = :photoLink AND b.bookId != :bookId")
+            "FROM Book b WHERE b.photoLink.imglId = :photoLink AND b.bookId != :bookId")
     boolean existsByPhotoLinkAndBookIdNot(@Param("photoLink") Integer photoLink,
                                           @Param("bookId") Integer bookId);
 }

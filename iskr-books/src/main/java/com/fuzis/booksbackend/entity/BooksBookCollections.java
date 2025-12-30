@@ -6,23 +6,25 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.time.LocalDateTime;
+
 @Entity
-@Table(name = "LIKED_COLLECTIONS", schema = "BOOKS")
+@Table(name = "BOOKS_BOOK_COLLECTIONS", schema = "BOOKS")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LikedCollection {
+public class BooksBookCollections {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "lc_id")
-    private Integer lcId;
+    @Column(name = "c_book_bcol_id")
+    private Integer cBookBcolId;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
 
     @ManyToOne
     @JoinColumn(name = "bcols_id", nullable = false)
-    private BookCollection bcols;
+    private BookCollection bookCollection;
 }

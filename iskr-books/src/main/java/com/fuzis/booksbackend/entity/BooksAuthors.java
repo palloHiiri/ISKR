@@ -7,22 +7,22 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "LIKED_COLLECTIONS", schema = "BOOKS")
+@Table(name = "BOOKS_AUTHORS", schema = "BOOKS")
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class LikedCollection {
+public class BooksAuthors {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "lc_id")
-    private Integer lcId;
+    @Column(name = "gc_book_author_id")
+    private Integer gcBookAuthorId;
 
     @ManyToOne
-    @JoinColumn(name = "user_id", nullable = false)
-    private User user;
+    @JoinColumn(name = "book_id", nullable = false)
+    private Book book;
 
     @ManyToOne
-    @JoinColumn(name = "bcols_id", nullable = false)
-    private BookCollection bcols;
+    @JoinColumn(name = "author_id", nullable = false)
+    private Author author;
 }

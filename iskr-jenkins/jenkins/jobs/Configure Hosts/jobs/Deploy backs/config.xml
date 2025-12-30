@@ -11,9 +11,11 @@
         <string>BUILD_IMAGES</string>
         <string>BUILD_SEARCH</string>
         <string>ANSIBLE_EXTRA_KEYS</string>
+        <string>INSTALL_BOOKS</string>
         <string>INSTALL_ACCOUNTS</string>
         <string>INSTALL_IMAGES</string>
         <string>INSTALL_SEARCH</string>
+        <string>BUILD_BOOKS</string>
         <string>BUILD_MAILER</string>
         <string>PROJECT_NAME</string>
       </parameters>
@@ -83,6 +85,16 @@
           <description>Нужно ли задеплоить mailer backend?</description>
           <defaultValue>false</defaultValue>
         </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>BUILD_BOOKS</name>
+          <description>Нужно ли собрать books backend?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
+        <hudson.model.BooleanParameterDefinition>
+          <name>INSTALL_BOOKS</name>
+          <description>Нужно ли задеплоить books backend?</description>
+          <defaultValue>false</defaultValue>
+        </hudson.model.BooleanParameterDefinition>
         <hudson.model.StringParameterDefinition>
           <name>ANSIBLE_EXTRA_KEYS</name>
           <description>Дополнительные ключи ansible</description>
@@ -138,6 +150,16 @@
             name: &quot;INSTALL_MAILER&quot;,
             defaultValue: false,
             description: &quot;Нужно ли задеплоить mailer backend?&quot;
+        )
+		booleanParam(
+            name: &quot;BUILD_BOOKS&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли собрать books backend?&quot;
+        )
+		booleanParam(
+            name: &quot;INSTALL_BOOKS&quot;,
+            defaultValue: false,
+            description: &quot;Нужно ли задеплоить books backend?&quot;
         )
 
         string(
@@ -233,6 +255,22 @@
     					}
                     }
                 }
+				stage(&quot;Build books&quot;) {
+                    when {
+                        expression { params.BUILD_BOOKS }
+                    }
+                    steps {
+						script {
+                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+    						  sh &quot;&quot;&quot;
+    							${env.PREPARE_CMD} &amp;&amp; \
+    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/build-backend.yml \
+    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;) -e &quot;backend_name=iskr-books&quot;
+    							&quot;&quot;&quot;
+                             }
+    					}
+                    }
+                }
             }
 		}		
 		stage(&quot;Prepare installations&quot;) {
@@ -295,6 +333,22 @@
     						  sh &quot;&quot;&quot;
     							${env.PREPARE_CMD} &amp;&amp; \
     							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-mailer.yml \
+    							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;) 
+    							&quot;&quot;&quot;
+                             }
+    					}
+                    }
+                }
+				stage(&quot;Deploy books&quot;) {
+                    when {
+                        expression { params.INSTALL_BOOKS }
+                    }
+                    steps {
+						script {
+                             withCredentials([string(credentialsId: &apos;ansible-vault-password&apos;, variable: &apos;VAULT_PASS&apos;)]) {
+    						  sh &quot;&quot;&quot;
+    							${env.PREPARE_CMD} &amp;&amp; \
+    							${env.ANSIBLE_EXEC_PLAYBOOK} ${env.BASE_ANSIBLE_PARAMS} ./backs/deploy-books.yml \
     							${params.ANSIBLE_EXTRA_KEYS} --vault-password-file &lt;(echo &quot;$VAULT_PASS&quot;) 
     							&quot;&quot;&quot;
                              }

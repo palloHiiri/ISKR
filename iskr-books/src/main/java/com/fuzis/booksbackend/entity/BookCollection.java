@@ -3,60 +3,42 @@ package com.fuzis.booksbackend.entity;
 import com.fuzis.booksbackend.entity.enumerate.CollectionType;
 import com.fuzis.booksbackend.entity.enumerate.Confidentiality;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.EqualsAndHashCode;
-import lombok.ToString;
-
-import java.util.Set;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "book_collections", schema = "books")
-@Getter
-@Setter
+@Table(name = "BOOK_COLLECTIONS", schema = "BOOKS")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
-@ToString(exclude = {"books", "viewPrivileges", "likes"})
-@EqualsAndHashCode(exclude = {"books", "viewPrivileges", "likes"})
 public class BookCollection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "bcols_id")
     private Integer bcolsId;
 
-    @Column(name = "owner_id")
-    private Integer ownerId;
+    @ManyToOne
+    @JoinColumn(name = "owner_id", nullable = false)
+    private User owner;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false, length = 512)
     private String title;
 
     @Column(name = "description")
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "confidentiality")
+    @Column(name = "confidentiality", nullable = false)
     private Confidentiality confidentiality;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "book_collection_type")
-    private CollectionType bookCollectionType;
+    @Column(name = "book_collection_type", nullable = false)
+    private CollectionType collectionType;
 
-    @ManyToMany
-    @JoinTable(
-            name = "books_book_collections",
-            schema = "books",
-            joinColumns = @JoinColumn(name = "bcols_id"),
-            inverseJoinColumns = @JoinColumn(name = "book_id")
-    )
-    private Set<Book> books;
-
-    @OneToMany(mappedBy = "collection")
-    private Set<CollectionViewPrivilege> viewPrivileges;
-
-    @OneToMany(mappedBy = "collection")
-    private Set<LikedCollection> likes;
+    @OneToOne
+    @JoinColumn(name = "photo_link")
+    private ImageLink photoLink;
 }
