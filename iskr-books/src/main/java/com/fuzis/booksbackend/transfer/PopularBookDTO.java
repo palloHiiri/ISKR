@@ -14,5 +14,6 @@ public class PopularBookDTO {
     private String isbn;
     private Integer pageCnt;
     private Long collectionsCount;
+    private Double averageRating; // Новое поле: средний рейтинг
     private ImageLinkDTO photoLink;
 }

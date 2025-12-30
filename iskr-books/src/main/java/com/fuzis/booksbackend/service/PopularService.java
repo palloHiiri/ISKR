@@ -20,6 +20,7 @@ public class PopularService {
     private final SubscriberRepository subscriberRepository;
     private final LikedCollectionRepository likedCollectionRepository;
     private final BooksBookCollectionsRepository booksBookCollectionsRepository;
+    private final BookReviewRepository bookReviewRepository;
     private final UserRepository userRepository;
     private final BookCollectionRepository bookCollectionRepository;
     private final BookRepository bookRepository;
@@ -163,6 +164,14 @@ public class PopularService {
             // Получаем коллекции с фотографиями
             List<BookCollection> collections = bookCollectionRepository.findByIdsWithPhotoLinks(collectionIds);
 
+            // Получаем количество книг в каждой коллекции
+            List<Object[]> bookCountsResults = booksBookCollectionsRepository.findBookCountsByCollectionIds(collectionIds);
+            Map<Integer, Long> bookCountsMap = bookCountsResults.stream()
+                    .collect(Collectors.toMap(
+                            row -> (Integer) row[0],
+                            row -> (Long) row[1]
+                    ));
+
             // Получаем ID владельцев
             List<Integer> ownerIds = collections.stream()
                     .map(BookCollection::getOwner)
@@ -217,6 +226,9 @@ public class PopularService {
                                 dto.setOwnerNickname(fullOwner.getProfile().getNickname());
                             }
                         }
+
+                        // Добавляем количество книг в коллекции
+                        dto.setBookCount(bookCountsMap.getOrDefault(collection.getBcolsId(), 0L).intValue());
 
                         // Добавляем изображение коллекции
                         ImageLink photoLink = collection.getPhotoLink();
@@ -294,6 +306,14 @@ public class PopularService {
             // Получаем книги с авторами и жанрами
             List<Book> books = bookRepository.findAllById(bookIds);
 
+            // Получаем средние рейтинги для книг
+            List<Object[]> averageRatingsResults = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
+            Map<Integer, Double> averageRatingsMap = averageRatingsResults.stream()
+                    .collect(Collectors.toMap(
+                            row -> (Integer) row[0],
+                            row -> (Double) row[1]
+                    ));
+
             // Получаем ID изображений
             List<Integer> imageIds = books.stream()
                     .map(Book::getPhotoLink)
@@ -327,6 +347,14 @@ public class PopularService {
                         dto.setSubtitle(book.getSubtitle());
                         dto.setIsbn(book.getIsbn());
                         dto.setPageCnt(book.getPageCnt());
+
+                        // Добавляем средний рейтинг (округленный до 2 знаков после запятой)
+                        Double avgRating = averageRatingsMap.get(book.getBookId());
+                        if (avgRating != null) {
+                            dto.setAverageRating(Math.round(avgRating * 100.0) / 100.0);
+                        } else {
+                            dto.setAverageRating(null);
+                        }
 
                         // Добавляем изображение книги
                         ImageLink photoLink = book.getPhotoLink();

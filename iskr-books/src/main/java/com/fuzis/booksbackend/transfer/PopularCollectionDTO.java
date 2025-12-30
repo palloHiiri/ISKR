@@ -15,5 +15,6 @@ public class PopularCollectionDTO {
     private Integer ownerId;
     private String ownerNickname;
     private Long likesCount;
+    private Integer bookCount; // Новое поле: количество книг в коллекции
     private ImageLinkDTO photoLink;
 }

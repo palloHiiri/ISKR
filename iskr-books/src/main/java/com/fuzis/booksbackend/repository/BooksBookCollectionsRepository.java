@@ -7,6 +7,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Map;
 
 @Repository
 public interface BooksBookCollectionsRepository extends JpaRepository<BooksBookCollections, Integer> {
@@ -16,6 +17,12 @@ public interface BooksBookCollectionsRepository extends JpaRepository<BooksBookC
             "GROUP BY bbc.book.bookId " +
             "ORDER BY collectionsCount DESC")
     List<Object[]> findPopularBooks();
+
+    @Query("SELECT bbc.bookCollection.bcolsId, COUNT(bbc) as bookCount " +
+            "FROM BooksBookCollections bbc " +
+            "WHERE bbc.bookCollection.bcolsId IN :collectionIds " +
+            "GROUP BY bbc.bookCollection.bcolsId")
+    List<Object[]> findBookCountsByCollectionIds(@Param("collectionIds") List<Integer> collectionIds);
 
     List<BooksBookCollections> findByBook_BookIdIn(List<Integer> bookIds);
 }

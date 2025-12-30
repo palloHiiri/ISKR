@@ -13,7 +13,8 @@ public interface LikedCollectionRepository extends JpaRepository<LikedCollection
 
     @Query("SELECT lc.bcols.bcolsId, COUNT(lc) as likesCount " +
             "FROM LikedCollection lc " +
-            "WHERE lc.bcols.confidentiality = 'Public' " +
+            "JOIN lc.bcols bc " +
+            "WHERE bc.confidentiality = 'Public' " +
             "GROUP BY lc.bcols.bcolsId " +
             "ORDER BY likesCount DESC")
     List<Object[]> findPopularCollections();

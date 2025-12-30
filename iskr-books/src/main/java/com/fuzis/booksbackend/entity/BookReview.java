@@ -1,33 +1,34 @@
 package com.fuzis.booksbackend.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "book_reviews", schema = "books")
-@Getter
-@Setter
+@Table(name = "BOOK_REVIEWS", schema = "BOOKS")
+@Data
+@Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Builder
 public class BookReview {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "rvw_id")
     private Integer rvwId;
 
-    @Column(name = "user_id")
-    private Integer userId;
+    @ManyToOne
+    @JoinColumn(name = "user_id", nullable = false)
+    private User user;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "book_id")
+    @ManyToOne
+    @JoinColumn(name = "book_id", nullable = false)
+    @JsonIgnore
     private Book book;
 
-    @Column(name = "score")
+    @Column(name = "score", nullable = false)
     private Integer score;
 
     @Column(name = "review_text")
