@@ -3,39 +3,37 @@ package com.fuzis.search.entity;
 import com.fuzis.search.entity.enumerate.CollectionType;
 import com.fuzis.search.entity.enumerate.Confidentiality;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-import lombok.NoArgsConstructor;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
+import lombok.*;
 
 @Entity
-@Table(name = "book_collections", schema = "books")
-@Getter
-@Setter
-@NoArgsConstructor
-@AllArgsConstructor
-@Builder
+@Table(name = "BOOK_COLLECTIONS", schema = "BOOKS")
+@Data
 public class BookCollection {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "bcols_id")
     private Integer bcolsId;
 
-    @Column(name = "owner_id")
+    @Column(name = "owner_id", nullable = false)
     private Integer ownerId;
 
-    @Column(name = "title")
+    @Column(name = "title", nullable = false, length = 512)
     private String title;
 
-    @Column(name = "description")
+    @Column(name = "description", columnDefinition = "TEXT")
     private String description;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "confidentiality")
+    @Column(name = "confidentiality", nullable = false)
     private Confidentiality confidentiality;
 
-    @Enumerated(EnumType.STRING)
-    @Column(name = "book_collection_type")
-    private CollectionType bookCollectionType;
+    @OneToOne
+    @JoinColumn(name = "photo_link")
+    private ImageLinks photoLink;
+
+    @Transient
+    private Long likesCount;
+
+    @Transient
+    private Integer bookCount;
 }

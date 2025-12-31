@@ -1,12 +1,16 @@
 import axios from 'axios';
-import type {
-    PopularResponse,
-    User,
-    Book,
-    Collection,
-    PhotoLink
+import { 
+  OAPI_BASE_URL, 
+  IMAGES_BASE_URL, 
+  API_ENDPOINTS 
+} from '../constants/api';
+import type { 
+  Book, 
+  Collection, 
+  User, 
+  PhotoLink, 
+  ImageData 
 } from '../types/popular';
-import { OAPI_BASE_URL, IMAGES_BASE_URL, API_ENDPOINTS } from '../constants/api';
 
 // Создаем инстанс axios для OAPI
 const api = axios.create({
@@ -17,7 +21,7 @@ const api = axios.create({
   },
 });
 
-// Функция для получения URL изображения
+// ОСНОВНАЯ ФУНКЦИЯ: Получение URL изображения из photoLink структуры
 export const getImageUrl = (photoLink: PhotoLink | null | undefined): string | null => {
   if (!photoLink?.imageData?.uuid || !photoLink?.imageData?.extension) {
     return null;
@@ -25,44 +29,60 @@ export const getImageUrl = (photoLink: PhotoLink | null | undefined): string | n
   return `${IMAGES_BASE_URL}/${photoLink.imageData.uuid}.${photoLink.imageData.extension}`;
 };
 
-// Функция для получения URL изображения пользователя
-export const getUserImageUrl = (user: User): string | null => {
-  if (!user.profileImage) {
+// НОВАЯ ФУНКЦИЯ: Получение URL изображения из данных поиска (imageUuid, imageExtension)
+export const getSearchImageUrl = (imageUuid?: string, imageExtension?: string): string | null => {
+  if (!imageUuid || !imageExtension) {
     return null;
   }
-  return getImageUrl(user.profileImage);
+  return `${IMAGES_BASE_URL}/${imageUuid}.${imageExtension}`;
 };
 
-// Функция для получения URL изображения книги
+// ОБНОВЛЕННАЯ ФУНКЦИЯ: Получение URL изображения книги (поддерживает оба формата)
 export const getBookImageUrl = (book: Book): string | null => {
-  if (!book.photoLink) {
-    return null;
+  // Сначала проверяем данные из поиска (imageUuid/imageExtension)
+  if (book.imageUuid && book.imageExtension) {
+    return getSearchImageUrl(book.imageUuid, book.imageExtension);
   }
-  return getImageUrl(book.photoLink);
+  // Затем проверяем photoLink из популярного контента
+  if (book.photoLink) {
+    return getImageUrl(book.photoLink);
+  }
+  return null;
 };
 
-// Функция для получения URL изображения коллекции
-export const getCollectionImageUrl = (collection: Collection): string | null => {
-  if (!collection.photoLink) {
-    return null;
+// ОБНОВЛЕННАЯ ФУНКЦИЯ: Получение URL изображения пользователя
+export const getUserImageUrl = (user: User): string | null => {
+  // Сначала проверяем данные из поиска (imageUuid/imageExtension)
+  if (user.profileImage) {
+    return getImageUrl(user.profileImage);
   }
-  return getImageUrl(collection.photoLink);
+  return null;
+};
+
+// ОБНОВЛЕННАЯ ФУНКЦИЯ: Получение URL изображения коллекции
+export const getCollectionImageUrl = (collection: Collection): string | null => {
+  // Сначала проверяем данные из поиска (imageUuid/imageExtension)
+  if (collection.photoLink) {
+    return getImageUrl(collection.photoLink);
+  }
+  return null;
 };
 
 // Вспомогательная функция для форматирования рейтинга (из 10-балльной в 5-балльную)
 export const formatRating = (rating: number | null): number => {
-  if (rating === null) {
+  if (rating === null || rating === undefined) {
     return 0;
   }
-  // Преобразуем из 10-балльной шкалы в 5-балльную
-  return Math.round((rating / 2) * 10) / 10; // Округляем до 1 знака после запятой
+  // Преобразуем из 10-балльной шкалы в 5-балльную и округляем до 1 знака
+  const converted = rating / 2;
+  return Math.round(converted * 10) / 10;
 };
 
 export const popularAPI = {
-  // Получение популярных пользователей (без изменений)
+  // Получение популярных пользователей
   getPopularUsers: async (limit: number = 12): Promise<User[]> => {
     try {
-      const response = await api.get<PopularResponse<User>>(API_ENDPOINTS.POPULAR_USERS, {
+      const response = await api.get(API_ENDPOINTS.POPULAR_USERS, {
         params: { limit }
       });
       
@@ -80,7 +100,7 @@ export const popularAPI = {
   // Получение популярных книг
   getPopularBooks: async (limit: number = 12): Promise<Book[]> => {
     try {
-      const response = await api.get<PopularResponse<Book>>(API_ENDPOINTS.POPULAR_BOOKS, {
+      const response = await api.get(API_ENDPOINTS.POPULAR_BOOKS, {
         params: { limit }
       });
       
@@ -98,7 +118,7 @@ export const popularAPI = {
   // Получение популярных коллекций
   getPopularCollections: async (limit: number = 12): Promise<Collection[]> => {
     try {
-      const response = await api.get<PopularResponse<Collection>>(API_ENDPOINTS.POPULAR_COLLECTIONS, {
+      const response = await api.get(API_ENDPOINTS.POPULAR_COLLECTIONS, {
         params: { limit }
       });
       

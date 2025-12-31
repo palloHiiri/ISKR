@@ -12,10 +12,10 @@ import java.util.Map;
 @Setter
 @Document(
         indexName = "global_search",
-        createIndex = false  // Отключаем автоматическое создание индекса
+        createIndex = false
 )
 @Setting(
-        settingPath = "/elasticsearch/settings.json"  // Указываем путь к файлу с настройками
+        settingPath = "/elasticsearch/settings.json"
 )
 public abstract class BaseIndexDocument {
 

@@ -100,6 +100,28 @@
       font-size: 1.25rem;
       font-weight: bold;
     }
+
+    .search-result-author {
+      color: rgba(255, 255, 255, 0.7);
+      margin-top: 0.25rem;
+    }
+
+    .search-result-rating {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      margin-top: 0.25rem;
+      
+      .stars-container {
+        display: flex;
+        align-items: center;
+      }
+      
+      .rating-value {
+        font-size: 0.875rem;
+        color: rgba(255, 255, 255, 0.7);
+      }
+    }
   }
 
   .search-result-actions {
@@ -141,5 +163,24 @@
         box-shadow: 0 0 10px 1px $pink;
       }
     }
+  }
+}
+
+.no-results-message {
+  text-align: center;
+  padding: 2rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  padding: 2rem 0;
+  margin-top: 1rem;
+  border-top: 1px solid rgba($pink, 0.3);
+  
+  button {
+    min-width: 200px;
   }
 }

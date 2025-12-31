@@ -11,11 +11,7 @@ import com.fuzis.search.entity.elasticsearch.BookCollectionDocument;
 import com.fuzis.search.entity.elasticsearch.BookDocument;
 import com.fuzis.search.entity.elasticsearch.GenreDocument;
 import com.fuzis.search.entity.elasticsearch.UserDocument;
-import com.fuzis.search.repository.AuthorRepository;
-import com.fuzis.search.repository.BookCollectionRepository;
-import com.fuzis.search.repository.BookRepository;
-import com.fuzis.search.repository.GenreRepository;
-import com.fuzis.search.repository.UserRepository;
+import com.fuzis.search.repository.*;
 import com.fuzis.search.repository.elasticsearch.SearchDocumentRepository;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
@@ -32,7 +28,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
-import java.util.List;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -55,6 +51,18 @@ public class DataSyncService {
 
     @Autowired
     private AuthorRepository authorRepository;
+
+    @Autowired
+    private BookReviewRepository bookReviewRepository;
+
+    @Autowired
+    private SubscriberRepository subscriberRepository;
+
+    @Autowired
+    private LikedCollectionRepository likedCollectionRepository;
+
+    @Autowired
+    private BooksBookCollectionsRepository booksBookCollectionsRepository;
 
     @Autowired
     private SearchDocumentRepository searchDocumentRepository;
@@ -81,15 +89,15 @@ public class DataSyncService {
 
         try {
             isSyncInProgress = true;
-            log.info("Sync start Elasticsearch");
+            log.info("Starting Elasticsearch sync");
 
             long startTime = System.currentTimeMillis();
 
             syncUsers();
             syncBooks();
             syncCollections();
-            syncGenres();    // Добавляем синхронизацию жанров
-            syncAuthors();   // Добавляем синхронизацию авторов
+            syncGenres();
+            syncAuthors();
 
             long duration = System.currentTimeMillis() - startTime;
             log.info("Sync finished, time: {} ms", duration);
@@ -102,7 +110,7 @@ public class DataSyncService {
     }
 
     private void syncUsers() {
-        log.info("Sync users...");
+        log.info("Syncing users...");
 
         try {
             searchDocumentRepository.deleteByType("user");
@@ -114,28 +122,44 @@ public class DataSyncService {
         indexOps.refresh();
 
         int page = 0;
-        List<User> users;
+        Page<User> userPage;
 
         do {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<User> userPage = userRepository.findAll(pageable);
-            users = userPage.getContent();
+            userPage = userRepository.findAll(pageable);
+            List<User> users = userPage.getContent();
 
             if (!users.isEmpty()) {
+                List<Integer> userIds = users.stream()
+                        .map(User::getUserId)
+                        .collect(Collectors.toList());
+
+                // Загружаем количество подписчиков
+                List<Object[]> subscribersData = subscriberRepository.findSubscribersCountByUserIds(userIds);
+                Map<Integer, Long> subscribersMap = new HashMap<>();
+                for (Object[] data : subscribersData) {
+                    subscribersMap.put((Integer) data[0], (Long) data[1]);
+                }
+
+                // Устанавливаем количество подписчиков для каждого пользователя
+                for (User user : users) {
+                    user.setSubscribersCount(subscribersMap.getOrDefault(user.getUserId(), 0L));
+                }
+
                 List<BaseIndexDocument> documents = users.stream()
                         .map(UserDocument::fromEntity)
                         .collect(Collectors.toList());
 
                 searchDocumentRepository.saveAll(documents);
-                log.info("Sync {} users (page {})", documents.size(), page + 1);
+                log.info("Synced {} users (page {})", documents.size(), page + 1);
             }
 
             page++;
-        } while (!users.isEmpty());
+        } while (userPage.hasNext());
     }
 
     private void syncBooks() {
-        log.info("Sync books...");
+        log.info("Syncing books...");
 
         try {
             searchDocumentRepository.deleteByType("book");
@@ -147,46 +171,75 @@ public class DataSyncService {
         indexOps.refresh();
 
         int page = 0;
-        List<Book> books;
-        boolean hasNextPage = true;
+        Page<Integer> bookIdsPage;
 
-        while (hasNextPage) {
+        do {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<Book> bookPage = bookRepository.findAllOrderedById(pageable);
-            List<Book> booksWithoutGenres = bookPage.getContent();
+            bookIdsPage = bookRepository.findAllBookIds(pageable);
+            List<Integer> bookIds = bookIdsPage.getContent();
 
-            if (booksWithoutGenres.isEmpty()) {
-                log.info("No more books to sync at page {}", page);
-                break;
-            }
+            if (!bookIds.isEmpty()) {
+                // 1. Загружаем книги с изображениями
+                List<Book> booksWithImages = bookRepository.findBooksWithImagesByIds(bookIds);
+                Map<Integer, Book> booksMap = booksWithImages.stream()
+                        .collect(Collectors.toMap(Book::getBookId, book -> book));
 
-            List<Integer> bookIds = booksWithoutGenres.stream()
-                    .map(Book::getBookId)
-                    .collect(Collectors.toList());
+                // 2. Загружаем жанры отдельно
+                List<Book> booksWithGenres = bookRepository.findBooksWithGenresByIds(bookIds);
+                for (Book bookWithGenres : booksWithGenres) {
+                    Book book = booksMap.get(bookWithGenres.getBookId());
+                    if (book != null) {
+                        book.setGenres(bookWithGenres.getGenres());
+                    }
+                }
 
-            books = bookRepository.findAllWithGenresByIds(bookIds);
+                // 3. Загружаем авторов отдельно
+                List<Book> booksWithAuthors = bookRepository.findBooksWithAuthorsByIds(bookIds);
+                for (Book bookWithAuthors : booksWithAuthors) {
+                    Book book = booksMap.get(bookWithAuthors.getBookId());
+                    if (book != null) {
+                        book.setAuthors(bookWithAuthors.getAuthors());
+                    }
+                }
 
-            if (!books.isEmpty()) {
+                // 4. Загружаем средние рейтинги
+                List<Object[]> averageRatings = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
+                Map<Integer, Double> ratingsMap = new HashMap<>();
+                for (Object[] rating : averageRatings) {
+                    ratingsMap.put((Integer) rating[0], (Double) rating[1]);
+                }
+
+                // 5. Загружаем количество коллекций
+                List<Object[]> collectionsData = booksBookCollectionsRepository.findCollectionsCountByBookIds(bookIds);
+                Map<Integer, Long> collectionsMap = new HashMap<>();
+                for (Object[] data : collectionsData) {
+                    collectionsMap.put((Integer) data[0], (Long) data[1]);
+                }
+
+                // 6. Устанавливаем дополнительные данные для книг
+                List<Book> books = new ArrayList<>(booksMap.values());
+                for (Book book : books) {
+                    book.setAverageRating(ratingsMap.getOrDefault(book.getBookId(), 0.0));
+                    book.setCollectionsCount(collectionsMap.getOrDefault(book.getBookId(), 0L));
+                }
+
+                // 7. Сортируем книги по ID для сохранения порядка
+                books.sort(Comparator.comparing(Book::getBookId));
+
                 List<BaseIndexDocument> documents = books.stream()
                         .map(BookDocument::fromEntity)
                         .collect(Collectors.toList());
 
                 searchDocumentRepository.saveAll(documents);
-                log.info("Sync {} books (page {})", documents.size(), page + 1);
+                log.info("Synced {} books (page {})", documents.size(), page + 1);
             }
 
-            hasNextPage = bookPage.hasNext();
             page++;
-
-            if (page > 1000) {
-                log.error("Possible infinite loop detected in syncBooks! Breaking.");
-                break;
-            }
-        }
+        } while (bookIdsPage.hasNext());
     }
 
     private void syncCollections() {
-        log.info("Sync book collections...");
+        log.info("Syncing book collections...");
 
         try {
             searchDocumentRepository.deleteByType("collection");
@@ -198,28 +251,68 @@ public class DataSyncService {
         indexOps.refresh();
 
         int page = 0;
-        List<BookCollection> collections;
+        Page<Integer> collectionIdsPage;
 
         do {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<BookCollection> collectionPage = collectionRepository.findAll(pageable);
-            collections = collectionPage.getContent();
+            collectionIdsPage = collectionRepository.findAllPublicCollectionIds(pageable);
+            List<Integer> collectionIds = collectionIdsPage.getContent();
 
-            if (!collections.isEmpty()) {
+            if (!collectionIds.isEmpty()) {
+                // 1. Загружаем коллекции с изображениями
+                List<BookCollection> collections = collectionRepository.findAllById(collectionIds);
+
+                // Загружаем изображения отдельно
+                Pageable imagesPageable = Pageable.unpaged();
+                Page<BookCollection> collectionsWithImages = collectionRepository.findAllPublicWithImages(imagesPageable);
+                Map<Integer, BookCollection> collectionsWithImagesMap = collectionsWithImages.getContent().stream()
+                        .collect(Collectors.toMap(BookCollection::getBcolsId, collection -> collection));
+
+                // Устанавливаем изображения для коллекций
+                for (BookCollection collection : collections) {
+                    BookCollection collectionWithImage = collectionsWithImagesMap.get(collection.getBcolsId());
+                    if (collectionWithImage != null) {
+                        collection.setPhotoLink(collectionWithImage.getPhotoLink());
+                    }
+                }
+
+                // 2. Загружаем количество лайков
+                List<Object[]> likesData = likedCollectionRepository.findLikesCountByCollectionIds(collectionIds);
+                Map<Integer, Long> likesMap = new HashMap<>();
+                for (Object[] data : likesData) {
+                    likesMap.put((Integer) data[0], (Long) data[1]);
+                }
+
+                // 3. Загружаем количество книг в коллекциях
+                List<Object[]> booksData = booksBookCollectionsRepository.findBookCountByCollectionIds(collectionIds);
+                Map<Integer, Integer> booksMap = new HashMap<>();
+                for (Object[] data : booksData) {
+                    booksMap.put((Integer) data[0], ((Long) data[1]).intValue());
+                }
+
+                // 4. Устанавливаем дополнительные данные для коллекций
+                for (BookCollection collection : collections) {
+                    collection.setLikesCount(likesMap.getOrDefault(collection.getBcolsId(), 0L));
+                    collection.setBookCount(booksMap.getOrDefault(collection.getBcolsId(), 0));
+                }
+
+                // 5. Сортируем коллекции по ID для сохранения порядка
+                collections.sort(Comparator.comparing(BookCollection::getBcolsId));
+
                 List<BaseIndexDocument> documents = collections.stream()
                         .map(BookCollectionDocument::fromEntity)
                         .collect(Collectors.toList());
 
                 searchDocumentRepository.saveAll(documents);
-                log.info("Sync {} book collections (page {})", documents.size(), page + 1);
+                log.info("Synced {} collections (page {})", documents.size(), page + 1);
             }
 
             page++;
-        } while (!collections.isEmpty());
+        } while (collectionIdsPage.hasNext());
     }
 
     private void syncGenres() {
-        log.info("Sync genres...");
+        log.info("Syncing genres...");
 
         try {
             searchDocumentRepository.deleteByType("genre");
@@ -231,12 +324,12 @@ public class DataSyncService {
         indexOps.refresh();
 
         int page = 0;
-        List<Genre> genres;
+        Page<Genre> genrePage;
 
         do {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<Genre> genrePage = genreRepository.findAll(pageable);
-            genres = genrePage.getContent();
+            genrePage = genreRepository.findAll(pageable);
+            List<Genre> genres = genrePage.getContent();
 
             if (!genres.isEmpty()) {
                 List<BaseIndexDocument> documents = genres.stream()
@@ -244,15 +337,15 @@ public class DataSyncService {
                         .collect(Collectors.toList());
 
                 searchDocumentRepository.saveAll(documents);
-                log.info("Sync {} genres (page {})", documents.size(), page + 1);
+                log.info("Synced {} genres (page {})", documents.size(), page + 1);
             }
 
             page++;
-        } while (!genres.isEmpty());
+        } while (genrePage.hasNext());
     }
 
     private void syncAuthors() {
-        log.info("Sync authors...");
+        log.info("Syncing authors...");
 
         try {
             searchDocumentRepository.deleteByType("author");
@@ -264,12 +357,12 @@ public class DataSyncService {
         indexOps.refresh();
 
         int page = 0;
-        List<Author> authors;
+        Page<Author> authorPage;
 
         do {
             Pageable pageable = PageRequest.of(page, batchSize);
-            Page<Author> authorPage = authorRepository.findAll(pageable);
-            authors = authorPage.getContent();
+            authorPage = authorRepository.findAll(pageable);
+            List<Author> authors = authorPage.getContent();
 
             if (!authors.isEmpty()) {
                 List<BaseIndexDocument> documents = authors.stream()
@@ -277,11 +370,11 @@ public class DataSyncService {
                         .collect(Collectors.toList());
 
                 searchDocumentRepository.saveAll(documents);
-                log.info("Sync {} authors (page {})", documents.size(), page + 1);
+                log.info("Synced {} authors (page {})", documents.size(), page + 1);
             }
 
             page++;
-        } while (!authors.isEmpty());
+        } while (authorPage.hasNext());
     }
 
     private void createIndexIfNotExists() {
@@ -289,7 +382,7 @@ public class DataSyncService {
             IndexOperations indexOps = elasticsearchOperations.indexOps(BaseIndexDocument.class);
 
             if (!indexOps.exists()) {
-                log.info("Creating elasticsearch index...");
+                log.info("Creating Elasticsearch index...");
                 indexOps.createWithMapping();
                 log.info("Index created successfully");
             } else {

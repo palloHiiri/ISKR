@@ -1,39 +1,26 @@
 package com.fuzis.search.entity;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 
 import java.time.ZonedDateTime;
 
+// User.java - обновляем с учетом профиля
 @Entity
-@Table(name="users", schema = "accounts")
-@AllArgsConstructor
-@NoArgsConstructor
-@Getter
-@Setter
-public class User
-{
+@Table(name = "USERS", schema = "ACCOUNTS")
+@Data
+public class User {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Integer user_id;
+    @Column(name = "user_id")
+    private Integer userId;
 
+    @Column(name = "username", nullable = false, unique = true, length = 255)
     private String username;
 
-    private ZonedDateTime registered_date;
-
-    @OneToOne(mappedBy = "user")
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private UserProfile profile;
 
-    public User(String username, ZonedDateTime registered_date){
-        this.username = username;
-        this.registered_date = registered_date;
-    }
-
-    public User(String username){
-        this.username = username;
-        this.registered_date = ZonedDateTime.now();
-    }
+    @Transient
+    private Long subscribersCount;
 }

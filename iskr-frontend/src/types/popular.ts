@@ -33,6 +33,11 @@ export interface Book {
   collectionsCount: number;
   averageRating: number | null;
   photoLink: PhotoLink | null;
+  description?: string;
+  authors?: string[]; // Добавляем авторов
+  genres?: string[]; // Добавляем жанры
+  imageUuid?: string; // Для поиска
+  imageExtension?: string; // Для поиска
 }
 
 // Тип для коллекции (обновлен по реальным данным API)

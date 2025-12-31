@@ -1,13 +1,15 @@
 import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import goalsReducer from './goalsSlice';
-import popularReducer from './popularSlice'; // Добавляем новый reducer
+import popularReducer from './popularSlice';
+import searchReducer from './searchSlice'; // новый reducer
 
 export const store = configureStore({
   reducer: {
     auth: authReducer,
     goals: goalsReducer,
-    popular: popularReducer, // Добавляем
+    popular: popularReducer,
+    search: searchReducer,
   },
 });
 

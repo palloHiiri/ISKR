@@ -6,7 +6,7 @@ import lombok.Setter;
 import org.springframework.data.elasticsearch.annotations.*;
 
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
+import java.time.ZoneOffset;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -45,6 +45,7 @@ public class AuthorDocument extends BaseIndexDocument {
         doc.setName(author.getName());
         doc.setRealName(author.getRealName());
         doc.setDescription(author.getDescription());
+
         if (author.getBirthDate() != null) {
             doc.setBirthDate(author.getBirthDate().toLocalDate());
         }
@@ -54,10 +55,15 @@ public class AuthorDocument extends BaseIndexDocument {
         data.put("name", author.getName());
         data.put("realName", author.getRealName());
         data.put("description", author.getDescription());
-        data.put("birthDate", author.getBirthDate());
+
+        // Временное решение: не кладем birthDate в data
+        // if (author.getBirthDate() != null) {
+        //     data.put("birthDate", author.getBirthDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
+        // }
+
         doc.setData(data);
 
-        // Собираем searchText из полей, которые мы хотим индексировать для поиска
+        // Собираем searchText
         StringBuilder searchTextBuilder = new StringBuilder();
         if (author.getName() != null) {
             searchTextBuilder.append(author.getName()).append(" ");

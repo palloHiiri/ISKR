@@ -15,6 +15,7 @@ export const API_ENDPOINTS = {
   POPULAR_USERS: '/v1/popular/users',
   POPULAR_BOOKS: '/v1/popular/books',
   POPULAR_COLLECTIONS: '/v1/popular/collections',
+  SEARCH: '/v1/search/query',
 } as const;
 
 // Ключи для localStorage

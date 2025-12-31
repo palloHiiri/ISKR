@@ -1,6 +1,6 @@
 import './CardElement.scss';
 import Stars from "../../stars/Stars.tsx";
-import {useEffect, useRef, useState} from "react";
+import {useState} from "react";
 
 interface CardElementProps {
   title: string;
@@ -43,21 +43,6 @@ function CardElement({
   const [clicked, setClicked] = useState(buttonClicked);
   const [buttonImg, setButtonImg] = useState(buttonIconUrl);
   const [buttonLbl, setButtonLbl] = useState(buttonLabel);
-  const [isOverflowing, setIsOverflowing] = useState(false);
-  const textRef = useRef<HTMLDivElement | null>(null);
-
-  useEffect(() => {
-    const el = textRef.current;
-    if (!el) return;
-
-    const checkOverflow = () => {
-      setIsOverflowing(el.scrollWidth > el.clientWidth + 1);
-    };
-
-    checkOverflow();
-    window.addEventListener('resize', checkOverflow);
-    return () => window.removeEventListener('resize', checkOverflow);
-  }, [title, description]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -86,11 +71,13 @@ function CardElement({
             {starsCount ? <Stars count={starsCount}/> : null}
             {infoDecoration ? <span className="info-decoration-text">{infoDecoration}</span> : null}
           </div> : null}
-        <div ref={textRef}
-             className={`card-text-line ${isOverflowing ? 'card-text-line--marquee' : ''}`}
-        >
-          <span className="card-title">{title}</span>
-          <span className="card-description">{description}</span>
+        <div className="card-text-container">
+          <div className="card-title" title={title}>
+            {title}
+          </div>
+          <div className="card-description" title={description}>
+            {description}
+          </div>
         </div>
         {button && (
           <button className={`card-button ${clicked ? 'card-button--clicked' : ''}`} onClick={handleClick}>
