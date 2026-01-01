@@ -24,4 +24,22 @@ export interface UserSubscription {
   username: string;
   nickname: string;
   profileImage: PhotoLink | null;
+  subscribersCount: number;
+}
+
+export interface UserSubscriber {
+  userId: number;
+  username: string;
+  nickname: string;
+  profileImage: PhotoLink | null;
+  subscribersCount: number;
+}
+
+// Типы для пагинации
+export interface PaginatedResponse<T> {
+  items: T[];
+  batch: number;
+  totalPages: number;
+  page: number;
+  totalElements: number;
 }

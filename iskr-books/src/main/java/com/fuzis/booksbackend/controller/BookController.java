@@ -29,7 +29,15 @@ public class BookController {
     @GetMapping("/{id}")
     public ResponseEntity<ChangeDTO<Object>> getBookById(
             @PathVariable @Min(1) Integer id) {
-        return httpUtil.handleServiceResponse(bookService.getBookById(id));
+        return httpUtil.handleServiceResponse(bookService.getBookDetail(id));
+    }
+
+    @GetMapping("/{id}/reviews")
+    public ResponseEntity<ChangeDTO<Object>> getBookReviews(
+            @PathVariable @Min(1) Integer id,
+            @RequestParam(defaultValue = "0") @Min(0) Integer page,
+            @RequestParam(defaultValue = "10") @Min(1) Integer batch) {
+        return httpUtil.handleServiceResponse(bookService.getBookReviews(id, page, batch));
     }
 
     @PutMapping("/{id}")

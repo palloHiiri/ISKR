@@ -13,6 +13,22 @@ $side-offset: -($ctrl-w / 2);
   position: relative;
   overflow: visible;
 
+  // Стиль для статического отображения (без слайдера)
+  &.hs-container--static {
+    padding: 2rem;
+    
+    .hs-static-content {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 2rem;
+      justify-content: center;
+      
+      .hs-item {
+        min-width: 0;
+      }
+    }
+  }
+
   .hs-viewport {
     overflow: hidden;
     position: relative;
@@ -25,7 +41,7 @@ $side-offset: -($ctrl-w / 2);
         flex: 0 0 100%;
         display: grid;
         grid-template-columns: repeat(var(--per-page, 4), 1fr);
-        gap: 6vw;
+        gap: 2rem;
         padding: 8px 0;
 
         .hs-item {
@@ -99,10 +115,3 @@ $side-offset: -($ctrl-w / 2);
     animation: move-arrow .35s ease-out;
   }
 }
-
-
-
-
-
-
-

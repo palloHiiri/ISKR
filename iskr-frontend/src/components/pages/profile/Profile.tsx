@@ -14,7 +14,7 @@ import {russianLocalWordConverter} from "../../../utils/russianLocalWordConverte
 import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import profileAPI from '../../../api/profileService';
-import type { ProfileUser, ProfileCollection, UserSubscription } from '../../../types/profile';
+import type { ProfileUser, ProfileCollection, UserSubscription, UserSubscriber } from '../../../types/profile';
 import { getImageUrl, getCollectionImageUrl } from '../../../api/popularService';
 
 function Profile() {
@@ -34,13 +34,16 @@ function Profile() {
 
   // Состояния для данных
   const [profile, setProfile] = useState<ProfileUser | null>(null);
-  const [subscribers, setSubscribers] = useState<UserSubscription[]>([]);
+  const [subscribers, setSubscribers] = useState<UserSubscriber[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [collections, setCollections] = useState<ProfileCollection[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubscribed, setIsSubscribed] = useState(false);
   const [currentSubscribersCount, setCurrentSubscribersCount] = useState(0);
+
+  // Проверяем, заблокирован ли пользователь
+  const isBanned = profile?.status === 'banned';
 
   // Загрузка данных профиля
   useEffect(() => {
@@ -75,6 +78,9 @@ function Profile() {
 
   // Обработчики
   const handleSubscribeProfile = () => {
+    if (isBanned) {
+      return; // Не позволяем подписываться на заблокированного пользователя
+    }
     setIsSubscribed(!isSubscribed);
     setCurrentSubscribersCount(prev => isSubscribed ? prev - 1 : prev + 1);
   };
@@ -87,7 +93,7 @@ function Profile() {
     return russianLocalWordConverter(count, 'подписчик', 'подписчика', 'подписчиков', 'подписчиков');
   };
 
-  const handleFollowerClick = (follower: UserSubscription) => {
+  const handleFollowerClick = (follower: UserSubscriber | UserSubscription) => {
     navigate('/profile', {
       state: {
         userId: follower.userId
@@ -96,22 +102,22 @@ function Profile() {
   };
 
   const handleSubscriberClick = () => {
-    navigate('/followers', {
-      state: {
-        userId,
-        isMine: false
-      }
-    });
-  };
+  navigate('/followers', {
+    state: {
+      userId: profile.userId, // Передаем userId профиля
+      isMine: false
+    }
+  });
+};
 
-  const handleSubscriptionsClick = () => {
-    navigate('/subscriptions', {
-      state: {
-        userId,
-        isMine: false
-      }
-    });
-  };
+const handleSubscriptionsClick = () => {
+  navigate('/subscriptions', {
+    state: {
+      userId: profile.userId, // Передаем userId профиля
+      isMine: false
+    }
+  });
+};
 
   const handleCollectionClick = (collection: ProfileCollection) => {
     navigate('/collection', {
@@ -164,6 +170,19 @@ function Profile() {
     </div>
   );
 
+  // Функция для форматирования количества подписчиков с правильным склонением
+  const formatSubscribersCount = (count: number): string => {
+    const formattedCount = count.toLocaleString('ru-RU');
+    const word = russianLocalWordConverter(
+      count,
+      'подписчик',
+      'подписчика',
+      'подписчиков',
+      'подписчиков'
+    );
+    return `${formattedCount} ${word}`;
+  };
+
   if (loading) {
     return (
       <main>
@@ -193,7 +212,7 @@ function Profile() {
       <div className="top-container">
         <div className="container-title-with-button">
           <h2>Профиль</h2>
-          {isAuthenticated && (
+          {isAuthenticated && !isBanned && (
             <div>
               {isSubscribed ? (
                 <SecondaryButton label={"Отписаться"} onClick={handleSubscribeProfile}/>
@@ -204,12 +223,23 @@ function Profile() {
           )}
         </div>
 
+        {/* Баннер заблокированного пользователя */}
+        {isBanned && (
+          <div className="banned-banner">
+            <div className="banned-banner-content">
+              <span className="banned-banner-icon">🚫</span>
+              <span className="banned-banner-text">Пользователь заблокирован</span>
+            </div>
+          </div>
+        )}
+
         <div className="profile-info container">
           <div className="profile-info-main">
             <div className="profile-info-panel">
               <span className="profile-info-name">{getDisplayName()}</span>
               <div className="profile-avatar-container">
                 <img className="profile-avatar" alt="" src={getAvatarUrl()}/>
+                {isBanned && <div className="profile-avatar-overlay"></div>}
               </div>
               <div className="profile-info-additional-container">
                 <div className="profile-info-additional clickable" onClick={handleSubscriberClick}>
@@ -313,7 +343,7 @@ function Profile() {
                   <CardElement
                     key={subscriber.userId}
                     title={subscriber.nickname || subscriber.username}
-                    description={`${(profile.subscribersCount || 0).toLocaleString('ru-RU')} подписчиков`}
+                    description={formatSubscribersCount(subscriber.subscribersCount)}
                     imageUrl={getImageUrl(subscriber.profileImage) || PlaceholderImage}
                     button={false}
                     onClick={() => handleFollowerClick(subscriber)}
@@ -341,7 +371,7 @@ function Profile() {
                   <CardElement
                     key={subscription.userId}
                     title={subscription.nickname || subscription.username}
-                    description={`${(profile.subscriptionsCount || 0).toLocaleString('ru-RU')} подписчиков`}
+                    description={formatSubscribersCount(subscription.subscribersCount)}
                     imageUrl={getImageUrl(subscription.profileImage) || PlaceholderImage}
                     button={false}
                     onClick={() => handleFollowerClick(subscription)}

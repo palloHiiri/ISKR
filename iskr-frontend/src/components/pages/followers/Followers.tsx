@@ -2,113 +2,228 @@ import './Followers.scss';
 import CardElement from "../../controls/card-element/CardElement.tsx";
 import AddIcon from "../../../assets/elements/add.svg";
 import Delete from "../../../assets/elements/delete.svg";
-import {useLocation, useNavigate} from "react-router-dom";
-import {useState} from "react";
+import {useLocation, useNavigate, Navigate} from "react-router-dom";
+import {useState, useEffect} from "react";
 import {useSelector} from "react-redux";
 import type {RootState} from "../../../redux/store.ts";
 import Modal from "../../controls/modal/Modal.tsx";
 import Login from "../../controls/login/Login.tsx";
-import Avatar1 from "../../../assets/images/users/avatar1.jpg";
-import Avatar2 from "../../../assets/images/users/avatar2.jpg";
-import Avatar3 from "../../../assets/images/users/avatar3.jpg";
-import Avatar4 from "../../../assets/images/users/avatar4.jpg";
-import Avatar5 from "../../../assets/images/users/avatar5.jpg";
-import Avatar6 from "../../../assets/images/users/avatar6.jpg";
-import Avatar7 from "../../../assets/images/users/avatar7.jpg";
-import Avatar8 from "../../../assets/images/users/avatar8.jpg";
 import {russianLocalWordConverter} from "../../../utils/russianLocalWordConverter.ts";
 import PrimaryButton from "../../controls/primary-button/PrimaryButton.tsx";
-
-interface Follower {
-  id: number;
-  username: string;
-  avatar: string;
-  followersCount: string;
-}
+import PlaceholderImage from '../../../assets/images/placeholder.jpg';
+import profileAPI from '../../../api/profileService';
+import type { UserSubscriber, PaginatedResponse } from '../../../types/profile';
+import { getImageUrl } from '../../../api/popularService';
+import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
 
 function Followers() {
   const location = useLocation();
   const navigate = useNavigate();
+  
+  // Получаем userId и isMine из state
+  const userId = location.state?.userId;
+  const isMine = location.state?.isMine || false;
+  
+  // Если userId нет - редирект на главную
+  if (!userId) {
+    return <Navigate to="/" replace />;
+  }
+
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [userFollowStates, setUserFollowStates] = useState<Record<number, boolean>>({});
   
-  const { username, isMine } = location.state || {
-    username: 'user',
-    isMine: false
-  };
+  // Состояния для данных
+  const [followers, setFollowers] = useState<UserSubscriber[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [pagination, setPagination] = useState({
+    page: 0,
+    totalPages: 1,
+    totalElements: 0,
+    batch: 8
+  });
 
-  const isNewUser = username === 'newuser';
+  // Загрузка подписчиков
+  useEffect(() => {
+    const loadFollowers = async () => {
+      try {
+        setLoading(true);
+        setError(null);
+        
+        const response = await profileAPI.getUserSubscribersPaginated(userId, pagination.batch, pagination.page);
+        
+        if (pagination.page === 0) {
+          setFollowers(response.items);
+        } else {
+          setFollowers(prev => [...prev, ...response.items]);
+        }
+        
+        setPagination(prev => ({
+          ...prev,
+          totalPages: response.totalPages,
+          totalElements: response.totalElements
+        }));
+      } catch (err: any) {
+        console.error('Error loading followers:', err);
+        setError(err.message || 'Ошибка загрузки подписчиков');
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const followers: Follower[] = isNewUser ? [] : [
-    { id: 1, username: "ghost_67", avatar: Avatar1, followersCount: "12567" },
-    { id: 2, username: "book_lover", avatar: Avatar2, followersCount: "8234" },
-    { id: 3, username: "reader_pro", avatar: Avatar3, followersCount: "15890" },
-    { id: 4, username: "lit_critic", avatar: Avatar4, followersCount: "6543" },
-    { id: 5, username: "page_turner", avatar: Avatar5, followersCount: "11234" },
-    { id: 6, username: "bibliophile", avatar: Avatar6, followersCount: "9876" },
-    { id: 7, username: "story_seeker", avatar: Avatar7, followersCount: "13456" },
-    { id: 8, username: "word_wizard", avatar: Avatar8, followersCount: "7890" },
-  ];
+    loadFollowers();
+  }, [userId, pagination.page, pagination.batch]);
 
-  const handleUserClick = (follower: Follower) => {
+  // Загрузка профиля для получения username (для заголовка)
+  const [profile, setProfile] = useState<{ displayName: string } | null>(null);
+  
+  useEffect(() => {
+    const loadProfile = async () => {
+      try {
+        const profileData = await profileAPI.getUserProfile(userId);
+        setProfile({
+          displayName: profileData.nickname || profileData.username || 'Пользователь'
+        });
+      } catch (err) {
+        console.error('Error loading profile for title:', err);
+      }
+    };
+    
+    loadProfile();
+  }, [userId]);
+
+  const handleUserClick = (follower: UserSubscriber) => {
     navigate('/profile', {
       state: {
-        username: follower.username,
-        subscribersCount: parseInt(follower.followersCount),
-        avatarUrl: follower.avatar
+        userId: follower.userId
       }
     });
   };
 
   const handleUserFollow = (followerId: number) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+    
     setUserFollowStates(prev => ({
       ...prev,
       [followerId]: !prev[followerId]
     }));
   };
 
-  const getFollowerCount = (userId: number, baseCount: string) => {
-    const isFollowed = userFollowStates[userId];
-    const numericCount = parseInt(baseCount.replace(/\s/g, ''));
-    const newCount = isFollowed ? numericCount + 1 : numericCount;
-    const formattedCount = newCount.toLocaleString('ru-RU').replace(/,/g, ' ');
-    return `${formattedCount} ${russianLocalWordConverter(newCount, 'подписчик', 'подписчика', 'подписчиков', 'подписчиков')}`;
+  const getFollowerCount = (follower: UserSubscriber): string => {
+    const isFollowed = userFollowStates[follower.userId] || false;
+    const baseCount = follower.subscribersCount || 0;
+    const newCount = isFollowed ? baseCount + 1 : baseCount;
+    const formattedCount = newCount.toLocaleString('ru-RU');
+    
+    return `${formattedCount} ${russianLocalWordConverter(
+      newCount,
+      'подписчик',
+      'подписчика',
+      'подписчиков',
+      'подписчиков'
+    )}`;
+  };
+
+  const handleLoadMore = () => {
+    if (pagination.page < pagination.totalPages - 1) {
+      setPagination(prev => ({ ...prev, page: prev.page + 1 }));
+    }
+  };
+
+  const handleBackClick = () => {
+    navigate(-1);
+  };
+
+  // Рендер состояний загрузки и ошибок
+  const renderLoadingState = () => (
+    <div className="loading-state">
+      <div className="loading-spinner"></div>
+      <p>Загрузка подписчиков...</p>
+    </div>
+  );
+
+  const renderErrorState = () => (
+    <div className="error-state">
+      <p>Ошибка: {error}</p>
+      <SecondaryButton 
+        label="Вернуться назад" 
+        onClick={handleBackClick}
+      />
+    </div>
+  );
+
+  const getTitle = (): string => {
+    if (isMine) return 'Мои подписчики';
+    return `Подписчики ${profile?.displayName || 'пользователя'}`;
+  };
+
+  const getEmptyMessage = (): string => {
+    if (isMine) return 'У вас пока нет подписчиков.';
+    return `У ${profile?.displayName || 'пользователя'} пока нет подписчиков.`;
   };
 
   return (
     <main>
       <div className="top-container">
         <div className="container-title-with-button">
-          <h2>{isMine ? 'Мои подписчики' : `Подписчики ${username}`}</h2>
-          <PrimaryButton label={"Вернуться назад"} onClick={() => navigate(-1)} />
+          <h2>{getTitle()}</h2>
+          <PrimaryButton label="Вернуться назад" onClick={handleBackClick} />
         </div>
 
         <div className="followers-container container">
-          {followers.length > 0 ? (
-            <div className="followers-list">
-              {followers.map((follower) => (
-                <CardElement
-                  key={follower.id}
-                  title={follower.username}
-                  description={getFollowerCount(follower.id, follower.followersCount)}
-                  imageUrl={follower.avatar}
-                  button={true}
-                  buttonLabel={"Подписаться"}
-                  buttonIconUrl={AddIcon}
-                  buttonChanged={true}
-                  buttonChangedIconUrl={Delete}
-                  buttonChangedLabel={"Отписаться"}
-                  onClick={() => handleUserClick(follower)}
-                  onButtonClick={() => handleUserFollow(follower.id)}
-                  isAuthenticated={isAuthenticated}
-                  onUnauthorized={() => setShowLoginModal(true)}
-                />
-              ))}
-            </div>
+          {loading && pagination.page === 0 ? (
+            renderLoadingState()
+          ) : error ? (
+            renderErrorState()
+          ) : followers.length > 0 ? (
+            <>
+              <div className="followers-list">
+                {followers.map((follower) => {
+                  const isFollowed = userFollowStates[follower.userId] || false;
+                  const displayName = follower.nickname || follower.username || 'Пользователь';
+                  
+                  return (
+                    <CardElement
+                      key={follower.userId}
+                      title={displayName}
+                      description={getFollowerCount(follower)}
+                      imageUrl={getImageUrl(follower.profileImage) || PlaceholderImage}
+                      button={!isMine} // Для своих подписчиков кнопка не показывается
+                      buttonLabel={isFollowed ? "Отписаться" : "Подписаться"}
+                      buttonIconUrl={isFollowed ? Delete : AddIcon}
+                      onClick={() => handleUserClick(follower)}
+                      onButtonClick={() => handleUserFollow(follower.userId)}
+                      isAuthenticated={isAuthenticated}
+                      onUnauthorized={() => setShowLoginModal(true)}
+                    />
+                  );
+                })}
+              </div>
+              
+              {pagination.page < pagination.totalPages - 1 && (
+                <div className="load-more-container">
+                  <PrimaryButton
+                    label="Загрузить еще"
+                    onClick={handleLoadMore}
+                    disabled={loading}
+                  />
+                </div>
+              )}
+              
+              {loading && pagination.page > 0 && (
+                <div className="loading-more">
+                  <div className="loading-spinner-small"></div>
+                  <p>Загрузка...</p>
+                </div>
+              )}
+            </>
           ) : (
             <p className="no-followers-message">
-              {isMine ? 'У вас пока нет подписчиков.' : `У ${username} пока нет подписчиков.`}
+              {getEmptyMessage()}
             </p>
           )}
         </div>
@@ -128,4 +243,3 @@ function Followers() {
 }
 
 export default Followers;
-

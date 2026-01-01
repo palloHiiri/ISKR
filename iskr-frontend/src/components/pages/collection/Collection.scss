@@ -1,3 +1,4 @@
+// /src/components/pages/collection/Collection.scss
 @use '../../../_index.scss' as *;
 
 .collection-page-container {
@@ -104,48 +105,215 @@
 
 .collection-buttons {
   display: flex;
-  justify-content: right;
+  justify-content: flex-end;
   gap: 1rem;
   margin-bottom: 2rem;
-
 }
 
-.collection-books-grid {
+.collection-info-section {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 4rem;
-  width: 100%;
+  grid-template-columns: 200px 1fr;
+  gap: 3rem;
+  margin-bottom: 3rem;
+  align-items: start;
+
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+    gap: 2rem;
+  }
 }
 
-.collection-book-item {
-  position: relative;
-  cursor: pointer;
+.collection-cover-container {
+  .collection-cover {
+    width: 200px;
+    height: 300px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  }
+}
 
-  .delete-book-button {
-    position: absolute;
-    top: 0.5rem;
-    right: 0.5rem;
-    background: rgba(0, 0, 0, 0.7);
-    border: none;
-    border-radius: 50%;
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    z-index: 10;
-    transition: background 0.2s;
+.collection-details {
+  .collection-description {
+    margin-bottom: 2rem;
 
-    &:hover {
-      background: rgba(0, 0, 0, 0.9);
+    h3 {
+      font-size: 1.25rem;
+      margin-bottom: 0.5rem;
+      color: $pink;
     }
 
-    img {
-      height: 1.5rem;
-      width: 1.5rem;
+    p {
+      line-height: 1.6;
+      color: rgba(255, 255, 255, 0.8);
     }
   }
+}
+
+.collection-meta {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1rem;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+
+  .collection-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 4px;
+    border: 1px solid rgba($pink, 0.1);
+
+    &.clickable {
+      cursor: pointer;
+      transition: all 0.2s ease;
+
+      &:hover {
+        background: rgba($pink, 0.1);
+        border-color: $pink;
+        
+        .owner-name {
+          color: $pink;
+        }
+      }
+    }
+
+    .meta-label {
+      font-size: 0.875rem;
+      color: rgba(255, 255, 255, 0.6);
+    }
+
+    .meta-value {
+      font-size: 1.125rem;
+      font-weight: 500;
+      color: white;
+      
+      &.owner-name {
+        color: $pink;
+        font-weight: bold;
+      }
+    }
+  }
+}
+
+.collection-books-section {
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba($pink, 0.2);
+
+  .books-section-title {
+    font-size: 1.5rem;
+    margin-bottom: 2rem;
+    color: white;
+  }
+}
+
+.collection-books-list {
+  display: flex;
+  flex-direction: row;
+  justify-content: flex-start;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+  width: 100%;
+  
+  .collection-book-item {
+    flex: 0 0 calc(25% - 1.5rem);
+    min-width: 200px;
+    max-width: 200px;
+    position: relative;
+    cursor: pointer;
+
+    .delete-book-button {
+      position: absolute;
+      top: 0.5rem;
+      right: 0.5rem;
+      background: rgba(0, 0, 0, 0.7);
+      border: none;
+      border-radius: 50%;
+      width: 2.5rem;
+      height: 2.5rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      z-index: 10;
+      transition: background 0.2s;
+
+      &:hover {
+        background: rgba(0, 0, 0, 0.9);
+      }
+
+      img {
+        height: 1.5rem;
+        width: 1.5rem;
+      }
+    }
+
+    .card-element {
+      height: 100%;
+    }
+  }
+}
+
+.no-books-message {
+  text-align: center;
+  padding: 3rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-style: italic;
+  font-size: 1.125rem;
+}
+
+.load-more-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 3rem;
+  padding-top: 2rem;
+  border-top: 1px solid rgba($pink, 0.1);
+
+  button {
+    min-width: 200px;
+  }
+}
+
+// Стили для состояний загрузки и ошибок
+.loading-state,
+.error-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 300px;
+  gap: 1rem;
+  padding: 2rem;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid rgba($pink, 0.3);
+    border-top: 3px solid $pink;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+
+  p {
+    color: rgba(255, 255, 255, 0.7);
+    text-align: center;
+  }
+}
+
+.error-state {
+  p {
+    color: #ff4444;
+  }
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
 }
 
 .collection-cover-edit {
@@ -157,7 +325,8 @@
 
   .collection-cover-preview {
     width: 200px;
-    height: auto;
+    height: 300px;
+    object-fit: cover;
     border-radius: 8px;
   }
 
@@ -165,13 +334,76 @@
     color: $pink;
     cursor: pointer;
     text-decoration: underline;
+    padding: 0.5rem 1rem;
+    border: 1px solid $pink;
+    border-radius: 4px;
+    transition: background 0.2s;
 
     &:hover {
-      opacity: 0.8;
+      background: rgba($pink, 0.1);
     }
   }
 
   .cover-upload-input {
     display: none;
+  }
+}
+
+// Добавим в /src/components/pages/collection/Collection.scss
+.forbidden-state {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  min-height: 400px;
+  gap: 2rem;
+  padding: 3rem;
+  text-align: center;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba($pink, 0.3);
+  border-radius: 8px;
+  margin-top: 2rem;
+
+  .forbidden-icon {
+    width: 80px;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba($pink, 0.1);
+    border-radius: 50%;
+    border: 2px solid $pink;
+
+    img {
+      width: 40px;
+      height: 40px;
+      filter: brightness(0) saturate(100%) invert(34%) sepia(88%) saturate(1279%) hue-rotate(314deg) brightness(92%) contrast(94%);
+    }
+  }
+
+  h3 {
+    font-size: 1.75rem;
+    color: $pink;
+    margin: 0;
+  }
+
+  .forbidden-message {
+    font-size: 1.125rem;
+    color: rgba(255, 255, 255, 0.9);
+    max-width: 500px;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  .forbidden-hint {
+    font-size: 0.9rem;
+    color: rgba(255, 255, 255, 0.6);
+    max-width: 500px;
+    line-height: 1.5;
+    margin: 0;
+  }
+
+  button {
+    margin-top: 1rem;
   }
 }

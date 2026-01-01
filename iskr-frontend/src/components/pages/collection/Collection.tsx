@@ -1,5 +1,6 @@
+// /src/components/pages/collection/Collection.tsx
 import './Collection.scss';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useSelector } from 'react-redux';
 import type { RootState } from '../../../redux/store.ts';
@@ -11,34 +12,163 @@ import ConfirmDialog from '../../controls/confirm-dialog/ConfirmDialog.tsx';
 import BookListModal from '../../controls/book-list-modal/BookListModal.tsx';
 import Change from '../../../assets/elements/change-pink.svg';
 import Delete from '../../../assets/elements/delete-pink.svg';
-import DefaultCover from '../../../assets/images/books/tri-tovarischa.jpg';
+import PlaceholderImage from '../../../assets/images/placeholder.jpg';
+import { collectionAPI, type CollectionInfo, type CollectionBook } from '../../../api/collectionService';
+import { getImageUrl, getBookImageUrl, formatRating } from '../../../api/popularService';
+import { russianLocalWordConverter } from '../../../utils/russianLocalWordConverter.ts';
+import LockIcon from '../../../assets/elements/lock.svg'; // Добавим иконку замка
 
-interface Book {
+// Функции для перевода значений
+const translateCollectionType = (type: string): string => {
+  const translations: Record<string, string> = {
+    'Standard': 'Обычная',
+    'Liked': 'Понравившиеся',
+    'Wishlist': 'Вишлист'
+  };
+  return translations[type] || type;
+};
+
+const translateConfidentiality = (confidentiality: string): string => {
+  const translations: Record<string, string> = {
+    'Public': 'Публичная',
+    'Private': 'Приватная'
+  };
+  return translations[confidentiality] || confidentiality;
+};
+
+interface BookCardData {
   id: string;
   title: string;
   author: string;
   rating?: number;
   imageUrl: string;
+  originalData: CollectionBook;
 }
 
 function Collection() {
   const location = useLocation();
   const navigate = useNavigate();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
+  
   const [isEditMode, setEditMode] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteBookDialog, setShowDeleteBookDialog] = useState(false);
   const [showBookListModal, setShowBookListModal] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
+  
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
+  const [books, setBooks] = useState<BookCardData[]>([]);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
+  const [hasMore, setHasMore] = useState(false);
+  const [isForbidden, setIsForbidden] = useState(false); // Новое состояние для 403 ошибки
+
+  const collectionId = parseInt(location.state?.id || '0');
+
+  // Загрузка данных коллекции
+  useEffect(() => {
+    const loadCollectionData = async () => {
+      if (!collectionId) {
+        setError('ID коллекции не указан');
+        setLoading(false);
+        return;
+      }
+
+      try {
+        setLoading(true);
+        setError(null);
+        setIsForbidden(false);
+
+        // Загружаем информацию о коллекции и книги параллельно
+        const [collectionData, booksData] = await Promise.all([
+          collectionAPI.getCollection(collectionId),
+          collectionAPI.getCollectionBooks(collectionId, 12, 0)
+        ]);
+
+        setCollectionInfo(collectionData);
+        setTotalPages(booksData.totalPages);
+        setCurrentPage(booksData.page);
+        setHasMore(booksData.totalPages > 1);
+
+        // Преобразуем книги в формат для компонента
+        const formattedBooks: BookCardData[] = booksData.books.map((book: CollectionBook) => ({
+          id: book.bookId.toString(),
+          title: book.title,
+          author: book.authors.map(a => a.name).join(', '),
+          rating: formatRating(book.averageRating),
+          imageUrl: getBookImageUrl(book) || PlaceholderImage,
+          originalData: book
+        }));
+
+        setBooks(formattedBooks);
+      } catch (err: any) {
+        console.error('Error loading collection:', err);
+        
+        // Проверяем, является ли ошибка 403 (Forbidden)
+        if (err.response && err.response.status === 403) {
+          setIsForbidden(true);
+          setError('Доступ к этой коллекции запрещен');
+        } else {
+          setError(err.message || 'Ошибка загрузки коллекции');
+        }
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadCollectionData();
+  }, [collectionId]);
+
+  // Загрузка дополнительных книг (пагинация)
+  const loadMoreBooks = async () => {
+    if (!collectionId || !hasMore) return;
+
+    try {
+      const nextPage = currentPage + 1;
+      const booksData = await collectionAPI.getCollectionBooks(collectionId, 12, nextPage);
+
+      const formattedBooks: BookCardData[] = booksData.books.map((book: CollectionBook) => ({
+        id: book.bookId.toString(),
+        title: book.title,
+        author: book.authors.map(a => a.name).join(', '),
+        rating: formatRating(book.averageRating),
+        imageUrl: getBookImageUrl(book) || PlaceholderImage,
+        originalData: book
+      }));
+
+      setBooks(prev => [...prev, ...formattedBooks]);
+      setCurrentPage(nextPage);
+      setHasMore(nextPage < totalPages - 1);
+    } catch (err) {
+      console.error('Error loading more books:', err);
+    }
+  };
 
   const [collectionData, setCollectionData] = useState({
-    id: location.state?.id || '',
-    name: location.state?.name || 'Коллекция',
-    isMine: location.state?.isMine || false,
-    coverUrl: location.state?.coverUrl || DefaultCover,
+    id: collectionId.toString(),
+    name: '',
+    isMine: false,
+    coverUrl: PlaceholderImage,
   });
 
   const [originalData, setOriginalData] = useState(collectionData);
+
+  // Обновляем collectionData при загрузке collectionInfo
+  useEffect(() => {
+    if (collectionInfo) {
+      const isMine = currentUser ? collectionInfo.ownerId === currentUser.userId : false;
+      
+      setCollectionData({
+        id: collectionInfo.collectionId.toString(),
+        name: collectionInfo.title,
+        isMine,
+        coverUrl: collectionInfo.photoLink ? getImageUrl(collectionInfo.photoLink) : PlaceholderImage,
+      });
+    }
+  }, [collectionInfo, currentUser]);
 
   const handleEditMode = (enabled: boolean) => {
     if (enabled) {
@@ -49,8 +179,6 @@ function Collection() {
       setEditMode(false);
     }
   };
-
-  const [books, setBooks] = useState<Book[]>(location.state?.books || []);
 
   const handleDeleteCollection = () => {
     setShowDeleteDialog(true);
@@ -79,21 +207,22 @@ function Collection() {
     setShowBookListModal(true);
   };
 
-  const handleBooksSelected = (selectedBooks: Book[]) => {
+  const handleBooksSelected = (selectedBooks: BookCardData[]) => {
     setBooks(prev => [...prev, ...selectedBooks]);
     setShowBookListModal(false);
   };
 
-  const handleBookClick = (book: Book) => {
+  const handleBookClick = (book: BookCardData) => {
     navigate('/book', {
       state: {
         id: book.id,
         title: book.title,
-        author: book.author,
+        description: book.author,
         rating: book.rating,
         coverUrl: book.imageUrl,
         isMine: collectionData.isMine,
-        isEditMode: false
+        isEditMode: false,
+        originalData: book.originalData
       }
     });
   };
@@ -121,6 +250,94 @@ function Collection() {
       reader.readAsDataURL(file);
     }
   };
+
+  const handleOwnerClick = () => {
+    if (collectionInfo) {
+      navigate('/profile', {
+        state: {
+          userId: collectionInfo.ownerId
+        }
+      });
+    }
+  };
+
+  // Функция для форматирования количества книг
+  const formatBooksCount = (count: number): string => {
+    return `${count} ${russianLocalWordConverter(count, 'книга', 'книги', 'книг', 'книг')}`;
+  };
+
+  // Функция для форматирования количества лайков
+  const formatLikesCount = (count: number): string => {
+    return `${count} ${russianLocalWordConverter(count, 'лайк', 'лайка', 'лайков', 'лайков')}`;
+  };
+
+  // Рендер состояний загрузки и ошибок
+  const renderLoadingState = () => (
+    <div className="loading-state">
+      <div className="loading-spinner"></div>
+      <p>Загрузка коллекции...</p>
+    </div>
+  );
+
+  const renderErrorState = () => (
+    <div className="error-state">
+      <p>Ошибка: {error}</p>
+      <SecondaryButton 
+        label="Вернуться назад" 
+        onClick={() => navigate(-1)}
+      />
+    </div>
+  );
+
+  // Рендер состояния "доступ запрещен"
+  const renderForbiddenState = () => (
+    <div className="forbidden-state">
+      <div className="forbidden-icon">
+        <img src={LockIcon} alt="Замок" />
+      </div>
+      <h3>Коллекция недоступна</h3>
+      <p className="forbidden-message">
+        Эта коллекция является приватной или у вас нет прав для ее просмотра.
+      </p>
+      <p className="forbidden-hint">
+        Если вы считаете, что это ошибка, обратитесь к владельцу коллекции.
+      </p>
+      <SecondaryButton 
+        label="Вернуться назад" 
+        onClick={() => navigate(-1)}
+      />
+    </div>
+  );
+
+  if (loading) {
+    return (
+      <main>
+        <div className="collection-page-container">
+          {renderLoadingState()}
+        </div>
+      </main>
+    );
+  }
+
+  if (isForbidden) {
+    return (
+      <main>
+        <div className="collection-page-container">
+          {renderForbiddenState()}
+        </div>
+      </main>
+    );
+  }
+
+  if (error || !collectionInfo) {
+    return (
+      <main>
+        <div className="collection-page-container">
+          {renderErrorState()}
+        </div>
+      </main>
+    );
+  }
 
   return (
     <main>
@@ -155,21 +372,68 @@ function Collection() {
           )}
         </div>
 
-        {isEditMode && (
-          <div className="collection-cover-edit">
-            <img src={collectionData.coverUrl} alt="Обложка коллекции" className="collection-cover-preview" />
-            <label htmlFor="cover-upload" className="cover-upload-label">
-              Изменить обложку
-            </label>
-            <input
-              type="file"
-              id="cover-upload"
-              accept="image/*"
-              onChange={handleCoverChange}
-              className="cover-upload-input"
-            />
+        {/* Информация о коллекции */}
+        <div className="collection-info-section">
+          <div className="collection-cover-container">
+            {isEditMode ? (
+              <div className="collection-cover-edit">
+                <img src={collectionData.coverUrl} alt="Обложка коллекции" className="collection-cover-preview" />
+                <label htmlFor="cover-upload" className="cover-upload-label">
+                  Изменить обложку
+                </label>
+                <input
+                  type="file"
+                  id="cover-upload"
+                  accept="image/*"
+                  onChange={handleCoverChange}
+                  className="cover-upload-input"
+                />
+              </div>
+            ) : (
+              <img 
+                src={collectionData.coverUrl} 
+                alt="Обложка коллекции" 
+                className="collection-cover"
+              />
+            )}
           </div>
-        )}
+          
+          <div className="collection-details">
+            {collectionInfo.description && (
+              <div className="collection-description">
+                <h3>Описание</h3>
+                <p>{collectionInfo.description}</p>
+              </div>
+            )}
+            
+            <div className="collection-meta">
+              <div className="collection-meta-item">
+                <span className="meta-label">Тип:</span>
+                <span className="meta-value">{translateCollectionType(collectionInfo.collectionType)}</span>
+              </div>
+              
+              <div className="collection-meta-item">
+                <span className="meta-label">Конфиденциальность:</span>
+                <span className="meta-value">{translateConfidentiality(collectionInfo.confidentiality)}</span>
+              </div>
+              
+              <div className="collection-meta-item">
+                <span className="meta-label">Книги:</span>
+                <span className="meta-value">{formatBooksCount(collectionInfo.booksCount)}</span>
+              </div>
+              
+              <div className="collection-meta-item">
+                <span className="meta-label">Лайки:</span>
+                <span className="meta-value">{formatLikesCount(collectionInfo.likesCount)}</span>
+              </div>
+              
+              <div className="collection-meta-item clickable" onClick={handleOwnerClick}>
+                <span className="meta-label">Владелец:</span>
+                <span className="meta-value owner-name">{collectionInfo.ownerNickname}</span>
+              </div>
+            </div>
+          </div>
+        </div>
 
         {collectionData.isMine && isAuthenticated && (
           <div className="collection-buttons">
@@ -187,32 +451,52 @@ function Collection() {
           </div>
         )}
 
-        <div className="collection-books-grid">
-          {books.map((book) => (
-            <div key={book.id} className="collection-book-item">
-              {collectionData.isMine && isAuthenticated && !isEditMode && (
-                <button
-                  type="button"
-                  className="delete-book-button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleDeleteBook(book.id);
-                  }}
-                >
-                  <img src={Delete} alt="Удалить из коллекции" />
-                </button>
-              )}
-              <div onClick={() => handleBookClick(book)}>
-                <CardElement
-                  title={book.title}
-                  description={book.author}
-                  starsCount={book.rating}
-                  imageUrl={book.imageUrl}
-                  button={false}
-                />
+        <div className="collection-books-section">
+          <h3 className="books-section-title">Книги в коллекции</h3>
+          
+          {books.length > 0 ? (
+            <>
+              <div className="collection-books-list">
+                {books.map((book) => (
+                  <div key={book.id} className="collection-book-item">
+                    {collectionData.isMine && isAuthenticated && !isEditMode && (
+                      <button
+                        type="button"
+                        className="delete-book-button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleDeleteBook(book.id);
+                        }}
+                      >
+                        <img src={Delete} alt="Удалить из коллекции" />
+                      </button>
+                    )}
+                    <div onClick={() => handleBookClick(book)}>
+                      <CardElement
+                        title={book.title}
+                        description={book.author}
+                        starsCount={book.rating}
+                        imageUrl={book.imageUrl}
+                        button={false}
+                        starsSize="small"
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
-            </div>
-          ))}
+              
+              {hasMore && (
+                <div className="load-more-container">
+                  <PrimaryButton
+                    label="Загрузить еще"
+                    onClick={loadMoreBooks}
+                  />
+                </div>
+              )}
+            </>
+          ) : (
+            <p className="no-books-message">В этой коллекции пока нет книг</p>
+          )}
         </div>
       </div>
 

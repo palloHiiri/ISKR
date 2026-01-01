@@ -3,7 +3,6 @@
 .profile-collections-header {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   gap: 1rem;
   width: 100%;
 }
@@ -95,7 +94,6 @@
   .profile-collections-list {
     display: flex;
     flex-direction: row;
-    justify-content: space-between;
 
     .card-element {
       min-width: 15vw;
@@ -128,7 +126,6 @@
 .profile-subscriptions-list {
   display: flex;
   flex-direction: row;
-  justify-content: space-between;
   gap: 1rem;
   width: 100%;
 

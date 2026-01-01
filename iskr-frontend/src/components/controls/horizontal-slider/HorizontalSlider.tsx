@@ -16,6 +16,9 @@ export default function HorizontalSlider({maximumElements = 12, elementsOnPage =
     [children, maximumElements]
   );
 
+  // Если элементов меньше или равно elementsOnPage, показываем их все без слайдера
+  const shouldShowSlider = items.length > elementsOnPage;
+
   const pages = useMemo(() => {
     const arr: React.ReactNode[][] = [];
     for (let i = 0; i < items.length; i += elementsOnPage) {
@@ -95,6 +98,21 @@ export default function HorizontalSlider({maximumElements = 12, elementsOnPage =
     el.classList.remove('move-arrow');
     void el.offsetWidth;
     el.classList.add('move-arrow');
+  }
+
+  // Если элементов мало, показываем их все без слайдера
+  if (!shouldShowSlider) {
+    return (
+      <div className="hs-container hs-container--static">
+        <div className="hs-static-content">
+          {items.map((el, i) => (
+            <div className="hs-item" key={(React.isValidElement(el) && el.key) || `i-${i}`}>
+              {el}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
   }
 
   return (

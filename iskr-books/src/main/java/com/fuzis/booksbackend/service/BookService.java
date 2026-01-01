@@ -1,14 +1,8 @@
 package com.fuzis.booksbackend.service;
 
 import com.fuzis.booksbackend.entity.*;
-import com.fuzis.booksbackend.repository.AuthorRepository;
-import com.fuzis.booksbackend.repository.BookRepository;
-import com.fuzis.booksbackend.repository.GenreRepository;
-import com.fuzis.booksbackend.repository.UserRepository;
-import com.fuzis.booksbackend.repository.ImageLinkRepository;
-import com.fuzis.booksbackend.transfer.BookCreateDTO;
-import com.fuzis.booksbackend.transfer.BookUpdateDTO;
-import com.fuzis.booksbackend.transfer.ChangeDTO;
+import com.fuzis.booksbackend.repository.*;
+import com.fuzis.booksbackend.transfer.*;
 import com.fuzis.booksbackend.transfer.state.State;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -19,11 +13,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -35,6 +26,9 @@ public class BookService {
     private final GenreRepository genreRepository;
     private final UserRepository userRepository;
     private final ImageLinkRepository imageLinkRepository;
+    private final BooksBookCollectionsRepository booksBookCollectionsRepository;
+    private final BookReviewRepository bookReviewRepository;
+    private final SubscriberRepository subscriberRepository;
 
     @Transactional
     public ChangeDTO<Object> createBook(BookCreateDTO dto) {
@@ -377,5 +371,254 @@ public class BookService {
             return new ChangeDTO<>(State.Fail_Conflict,
                     "Data integrity violation: " + message, null);
         }
+    }
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> getBookDetail(Integer id) {
+        try {
+            log.debug("Fetching detailed book with ID: {}", id);
+
+            Optional<Book> bookOpt = bookRepository.findByIdWithAuthorsAndGenres(id);
+            if (bookOpt.isEmpty()) {
+                log.warn("Book not found with ID: {}", id);
+                return new ChangeDTO<>(State.Fail_NotFound, "Book not found", null);
+            }
+
+            Book book = bookOpt.get();
+
+            // Получаем количество добавлений в коллекции
+            Long collectionsCount = getCollectionsCountForBook(id);
+
+            // Получаем средний рейтинг (используем исправленный метод)
+            Double averageRating = bookReviewRepository.findAverageRatingByBookId(id).orElse(null);
+
+            // Получаем количество отзывов (используем новый метод)
+            Long reviewsCount = bookReviewRepository.countByBookId(id);
+
+            // Преобразуем в DTO
+            BookDetailDTO bookDetailDTO = convertToBookDetailDTO(book, collectionsCount, averageRating, reviewsCount.intValue());
+
+            log.debug("Book detail retrieved for ID: {}", id);
+            return new ChangeDTO<>(State.OK, "Book detail retrieved successfully", bookDetailDTO);
+
+        } catch (Exception e) {
+            log.error("Error retrieving book detail with ID {}: ", id, e);
+            return new ChangeDTO<>(State.Fail, "Error retrieving book detail: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> getBookReviews(Integer bookId, Integer page, Integer batch) {
+        try {
+            log.debug("Fetching reviews for book ID: {}, page: {}, batch: {}", bookId, page, batch);
+
+            // Проверяем существование книги
+            if (!bookRepository.existsById(bookId)) {
+                log.warn("Book not found with ID: {}", bookId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Book not found", null);
+            }
+
+            if (page == null || page < 0) {
+                page = 0;
+            }
+            if (batch == null || batch <= 0) {
+                batch = 10;
+            }
+
+            Pageable pageable = PageRequest.of(page, batch);
+            Page<BookReview> reviewsPage = bookReviewRepository.findByBook_BookId(bookId, pageable);
+
+            // Преобразуем в DTO
+            List<BookReviewDTO> reviewDTOs = reviewsPage.getContent().stream()
+                    .map(this::convertToBookReviewDTO)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("bookId", bookId);
+            response.put("page", page);
+            response.put("batch", batch);
+            response.put("totalPages", reviewsPage.getTotalPages());
+            response.put("totalElements", reviewsPage.getTotalElements());
+            response.put("reviews", reviewDTOs);
+
+            if (reviewDTOs.isEmpty()) {
+                log.debug("No reviews found for book {}", bookId);
+                return new ChangeDTO<>(State.OK, "No reviews found", response);
+            }
+
+            log.debug("Found {} reviews for book {}", reviewDTOs.size(), bookId);
+            return new ChangeDTO<>(State.OK, "Reviews retrieved successfully", response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving reviews for book ID {}: ", bookId, e);
+            return new ChangeDTO<>(State.Fail, "Error retrieving reviews: " + e.getMessage(), null);
+        }
+    }
+
+    private BookReviewDTO convertToBookReviewDTO(BookReview review) {
+        BookReviewDTO dto = new BookReviewDTO();
+        dto.setReviewId(review.getRvwId());
+        dto.setScore(review.getScore());
+        dto.setReviewText(review.getReviewText());
+
+        // Информация о пользователе
+        User user = review.getUser();
+        if (user != null) {
+            UserDTO userDTO = new UserDTO();
+            userDTO.setUserId(user.getUserId());
+            userDTO.setUsername(user.getUsername());
+            userDTO.setRegisteredDate(user.getRegisteredDate());
+
+            // Загружаем профиль пользователя
+            List<User> usersWithProfiles = userRepository.findByIdsWithProfiles(List.of(user.getUserId()));
+            if (!usersWithProfiles.isEmpty() && usersWithProfiles.get(0).getProfile() != null) {
+                UserProfile profile = usersWithProfiles.get(0).getProfile();
+                userDTO.setNickname(profile.getNickname());
+
+                // Загружаем изображение профиля
+                if (profile.getUserImglId() != null) {
+                    Integer imageLinkId = profile.getUserImglId().getImglId();
+                    List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(List.of(imageLinkId));
+                    if (!imageLinks.isEmpty()) {
+                        ImageLink imageLink = imageLinks.get(0);
+                        if (imageLink.getImageData() != null) {
+                            ImageData imageData = imageLink.getImageData();
+                            ImageDataDTO imageDataDTO = new ImageDataDTO(
+                                    imageData.getImgdId(),
+                                    imageData.getUuid(),
+                                    imageData.getSize(),
+                                    imageData.getMimeType(),
+                                    imageData.getExtension()
+                            );
+                            ImageLinkDTO imageLinkDTO = new ImageLinkDTO(imageLink.getImglId(), imageDataDTO);
+                            userDTO.setProfileImage(imageLinkDTO);
+                        }
+                    }
+                }
+            }
+            dto.setUser(userDTO);
+        }
+
+        return dto;
+    }
+
+    private Long getCollectionsCountForBook(Integer bookId) {
+        try {
+            return booksBookCollectionsRepository.countByBookId(bookId);
+        } catch (Exception e) {
+            log.error("Error getting collections count for book {}: ", bookId, e);
+            return 0L;
+        }
+    }
+
+    private BookDetailDTO convertToBookDetailDTO(Book book, Long collectionsCount, Double averageRating, Integer reviewsCount) {
+        BookDetailDTO dto = new BookDetailDTO();
+        dto.setBookId(book.getBookId());
+        dto.setIsbn(book.getIsbn());
+        dto.setTitle(book.getTitle());
+        dto.setSubtitle(book.getSubtitle());
+        dto.setDescription(book.getDescription());
+        dto.setPageCnt(book.getPageCnt());
+        dto.setCollectionsCount(collectionsCount);
+        dto.setAverageRating(averageRating != null ? Math.round(averageRating * 100.0) / 100.0 : null);
+        dto.setReviewsCount(reviewsCount);
+
+        // Загружаем изображение книги
+        if (book.getPhotoLink() != null) {
+            Integer imageLinkId = book.getPhotoLink().getImglId();
+            List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(List.of(imageLinkId));
+            if (!imageLinks.isEmpty()) {
+                ImageLink imageLink = imageLinks.get(0);
+                if (imageLink.getImageData() != null) {
+                    ImageData imageData = imageLink.getImageData();
+                    ImageDataDTO imageDataDTO = new ImageDataDTO(
+                            imageData.getImgdId(),
+                            imageData.getUuid(),
+                            imageData.getSize(),
+                            imageData.getMimeType(),
+                            imageData.getExtension()
+                    );
+                    ImageLinkDTO imageLinkDTO = new ImageLinkDTO(imageLink.getImglId(), imageDataDTO);
+                    dto.setPhotoLink(imageLinkDTO);
+                }
+            }
+        }
+
+        // Информация о пользователе, добавившем книгу
+        if (book.getAddedBy() != null) {
+            List<User> users = userRepository.findByIdsWithProfiles(List.of(book.getAddedBy().getUserId()));
+            if (!users.isEmpty()) {
+                User user = users.get(0);
+                UserDTO userDTO = new UserDTO();
+                userDTO.setUserId(user.getUserId());
+                userDTO.setUsername(user.getUsername());
+                userDTO.setRegisteredDate(user.getRegisteredDate());
+
+                if (user.getProfile() != null) {
+                    userDTO.setNickname(user.getProfile().getNickname());
+
+                    // Загружаем изображение профиля
+                    if (user.getProfile().getUserImglId() != null) {
+                        Integer profileImageLinkId = user.getProfile().getUserImglId().getImglId();
+                        List<ImageLink> profileImageLinks = imageLinkRepository.findByIdsWithImageData(List.of(profileImageLinkId));
+                        if (!profileImageLinks.isEmpty()) {
+                            ImageLink profileImageLink = profileImageLinks.get(0);
+                            if (profileImageLink.getImageData() != null) {
+                                ImageData imageData = profileImageLink.getImageData();
+                                ImageDataDTO imageDataDTO = new ImageDataDTO(
+                                        imageData.getImgdId(),
+                                        imageData.getUuid(),
+                                        imageData.getSize(),
+                                        imageData.getMimeType(),
+                                        imageData.getExtension()
+                                );
+                                ImageLinkDTO imageLinkDTO = new ImageLinkDTO(profileImageLink.getImglId(), imageDataDTO);
+                                userDTO.setProfileImage(imageLinkDTO);
+                            }
+                        }
+                    }
+                }
+                dto.setAddedBy(userDTO);
+            }
+        }
+
+        // Авторы
+        if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
+            List<AuthorDetailDTO> authorDTOs = book.getAuthors().stream()
+                    .map(author -> new AuthorDetailDTO(
+                            author.getAuthorId(),
+                            author.getName(),
+                            author.getBirthDate(),
+                            author.getDescription(),
+                            author.getRealName()
+                    ))
+                    .collect(Collectors.toList());
+            dto.setAuthors(authorDTOs);
+        }
+
+        // Жанры
+        if (book.getGenres() != null && !book.getGenres().isEmpty()) {
+            List<GenreDetailDTO> genreDTOs = book.getGenres().stream()
+                    .map(genre -> new GenreDetailDTO(
+                            genre.getGenreId(),
+                            genre.getName()
+                    ))
+                    .collect(Collectors.toList());
+            dto.setGenres(genreDTOs);
+        }
+
+        return dto;
+    }
+
+    private Map<String, Object> createReviewsResponse(Integer bookId, Integer page, Integer batch,
+                                                      List<BookReviewDTO> reviews, int totalReviews) {
+        Map<String, Object> response = new HashMap<>();
+        response.put("bookId", bookId);
+        response.put("page", page);
+        response.put("batch", batch);
+        response.put("totalPages", (int) Math.ceil((double) totalReviews / batch));
+        response.put("totalElements", totalReviews);
+        response.put("reviews", reviews);
+        return response;
     }
 }

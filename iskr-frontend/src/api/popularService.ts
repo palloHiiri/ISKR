@@ -38,15 +38,17 @@ export const getSearchImageUrl = (imageUuid?: string, imageExtension?: string): 
 };
 
 // ОБНОВЛЕННАЯ ФУНКЦИЯ: Получение URL изображения книги (поддерживает оба формата)
-export const getBookImageUrl = (book: Book): string | null => {
-  // Сначала проверяем данные из поиска (imageUuid/imageExtension)
+export const getBookImageUrl = (book: any): string | null => {
+  // Проверяем photoLink в структуре коллекции
+  if (book.photoLink && book.photoLink.imageData) {
+    return getImageUrl(book.photoLink);
+  }
+  
+  // Проверяем данные из поиска (imageUuid/imageExtension)
   if (book.imageUuid && book.imageExtension) {
     return getSearchImageUrl(book.imageUuid, book.imageExtension);
   }
-  // Затем проверяем photoLink из популярного контента
-  if (book.photoLink) {
-    return getImageUrl(book.photoLink);
-  }
+  
   return null;
 };
 

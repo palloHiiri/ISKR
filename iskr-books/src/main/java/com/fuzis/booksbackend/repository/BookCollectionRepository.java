@@ -9,6 +9,7 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface BookCollectionRepository extends JpaRepository<BookCollection, Integer> {
@@ -18,9 +19,18 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
     @Query("SELECT bc FROM BookCollection bc LEFT JOIN FETCH bc.photoLink WHERE bc.bcolsId IN :ids")
     List<BookCollection> findByIdsWithPhotoLinks(@Param("ids") List<Integer> ids);
 
-    // Получение коллекций пользователя с пагинацией
     Page<BookCollection> findByOwner_UserId(Integer userId, Pageable pageable);
 
-    // Подсчет количества коллекций пользователя
     long countByOwner_UserId(Integer userId);
+
+    // Получение коллекции с владельцем и фото
+    @Query("SELECT bc FROM BookCollection bc " +
+            "LEFT JOIN FETCH bc.owner " +
+            "LEFT JOIN FETCH bc.photoLink " +
+            "WHERE bc.bcolsId = :id")
+    Optional<BookCollection> findByIdWithOwnerAndPhoto(@Param("id") Integer id);
+
+    // Получение публичных коллекций
+    @Query("SELECT bc FROM BookCollection bc WHERE bc.confidentiality = 'Public'")
+    Page<BookCollection> findPublicCollections(Pageable pageable);
 }
