@@ -13,7 +13,7 @@ import AddIcon from "../../../assets/elements/add.svg";
 import {russianLocalWordConverter} from "../../../utils/russianLocalWordConverter.ts";
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import profileAPI from '../../../api/profileService';
-import type { UserSubscription, PaginatedResponse } from '../../../types/profile';
+import type { UserSubscription } from '../../../types/profile';
 import { getImageUrl } from '../../../api/popularService';
 import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
 
@@ -38,37 +38,21 @@ function Subscriptions() {
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 0,
-    totalPages: 1,
-    totalElements: 0,
-    batch: 8
-  });
 
   // Состояния для модалки отписки
   const [showUnsubscribeModal, setShowUnsubscribeModal] = useState(false);
   const [selectedSubscriptionId, setSelectedSubscriptionId] = useState<number | null>(null);
 
-  // Загрузка подписок
+  // Загрузка подписок - загружаем всех сразу (большой batch)
   useEffect(() => {
     const loadSubscriptions = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await profileAPI.getUserSubscriptionsPaginated(userId, pagination.batch, pagination.page);
-        
-        if (pagination.page === 0) {
-          setSubscriptions(response.items);
-        } else {
-          setSubscriptions(prev => [...prev, ...response.items]);
-        }
-        
-        setPagination(prev => ({
-          ...prev,
-          totalPages: response.totalPages,
-          totalElements: response.totalElements
-        }));
+        // Загружаем все подписки сразу (1000 - большое число чтобы охватить всех)
+        const subscriptionsData = await profileAPI.getUserSubscriptions(userId, 1000, 0);
+        setSubscriptions(subscriptionsData);
       } catch (err: any) {
         console.error('Error loading subscriptions:', err);
         setError(err.message || 'Ошибка загрузки подписок');
@@ -78,7 +62,7 @@ function Subscriptions() {
     };
 
     loadSubscriptions();
-  }, [userId, pagination.page, pagination.batch]);
+  }, [userId]);
 
   // Загрузка профиля для получения username (для заголовка)
   const [profile, setProfile] = useState<{ displayName: string } | null>(null);
@@ -121,12 +105,6 @@ function Subscriptions() {
       // Здесь должен быть API вызов для отписки
       // Пока просто удаляем из состояния
       setSubscriptions(prev => prev.filter(sub => sub.userId !== selectedSubscriptionId));
-      
-      // Обновляем счетчик totalElements
-      setPagination(prev => ({
-        ...prev,
-        totalElements: prev.totalElements - 1
-      }));
     }
     setShowUnsubscribeModal(false);
     setSelectedSubscriptionId(null);
@@ -157,12 +135,6 @@ function Subscriptions() {
       'подписчиков',
       'подписчиков'
     )}`;
-  };
-
-  const handleLoadMore = () => {
-    if (pagination.page < pagination.totalPages - 1) {
-      setPagination(prev => ({ ...prev, page: prev.page + 1 }));
-    }
   };
 
   const handleBackClick = () => {
@@ -206,66 +178,47 @@ function Subscriptions() {
         </div>
 
         <div className="subscriptions-container container">
-          {loading && pagination.page === 0 ? (
+          {loading ? (
             renderLoadingState()
           ) : error ? (
             renderErrorState()
           ) : subscriptions.length > 0 ? (
-            <>
-              <div className="subscriptions-list">
-                {subscriptions.map((subscription) => {
-                  const isFollowed = userFollowStates[subscription.userId] || false;
-                  const displayName = subscription.nickname || subscription.username || 'Пользователь';
-                  
-                  return isMine ? (
-                    <CardElement
-                      key={subscription.userId}
-                      title={displayName}
-                      description={getFollowerCount(subscription)}
-                      imageUrl={getImageUrl(subscription.profileImage) || PlaceholderImage}
-                      button={true}
-                      buttonLabel="Отписаться"
-                      buttonIconUrl={Delete}
-                      onClick={() => handleUserClick(subscription)}
-                      isAuthenticated={isAuthenticated}
-                      onUnauthorized={() => setShowLoginModal(true)}
-                      onButtonClick={() => handleUnsubscribe(subscription.userId)}
-                    />
-                  ) : (
-                    <CardElement
-                      key={subscription.userId}
-                      title={displayName}
-                      description={getFollowerCount(subscription)}
-                      imageUrl={getImageUrl(subscription.profileImage) || PlaceholderImage}
-                      button={true}
-                      buttonLabel={isFollowed ? "Отписаться" : "Подписаться"}
-                      buttonIconUrl={isFollowed ? Delete : AddIcon}
-                      onClick={() => handleUserClick(subscription)}
-                      onButtonClick={() => handleUserFollow(subscription.userId)}
-                      isAuthenticated={isAuthenticated}
-                      onUnauthorized={() => setShowLoginModal(true)}
-                    />
-                  );
-                })}
-              </div>
-              
-              {pagination.page < pagination.totalPages - 1 && (
-                <div className="load-more-container">
-                  <PrimaryButton
-                    label="Загрузить еще"
-                    onClick={handleLoadMore}
-                    disabled={loading}
+            <div className="subscriptions-list">
+              {subscriptions.map((subscription) => {
+                const isFollowed = userFollowStates[subscription.userId] || false;
+                const displayName = subscription.nickname || subscription.username || 'Пользователь';
+                
+                return isMine ? (
+                  <CardElement
+                    key={subscription.userId}
+                    title={displayName}
+                    description={getFollowerCount(subscription)}
+                    imageUrl={getImageUrl(subscription.profileImage) || PlaceholderImage}
+                    button={true}
+                    buttonLabel="Отписаться"
+                    buttonIconUrl={Delete}
+                    onClick={() => handleUserClick(subscription)}
+                    isAuthenticated={isAuthenticated}
+                    onUnauthorized={() => setShowLoginModal(true)}
+                    onButtonClick={() => handleUnsubscribe(subscription.userId)}
                   />
-                </div>
-              )}
-              
-              {loading && pagination.page > 0 && (
-                <div className="loading-more">
-                  <div className="loading-spinner-small"></div>
-                  <p>Загрузка...</p>
-                </div>
-              )}
-            </>
+                ) : (
+                  <CardElement
+                    key={subscription.userId}
+                    title={displayName}
+                    description={getFollowerCount(subscription)}
+                    imageUrl={getImageUrl(subscription.profileImage) || PlaceholderImage}
+                    button={true}
+                    buttonLabel={isFollowed ? "Отписаться" : "Подписаться"}
+                    buttonIconUrl={isFollowed ? Delete : AddIcon}
+                    onClick={() => handleUserClick(subscription)}
+                    onButtonClick={() => handleUserFollow(subscription.userId)}
+                    isAuthenticated={isAuthenticated}
+                    onUnauthorized={() => setShowLoginModal(true)}
+                  />
+                );
+              })}
+            </div>
           ) : (
             <p className="no-subscriptions-message">
               {getEmptyMessage()}

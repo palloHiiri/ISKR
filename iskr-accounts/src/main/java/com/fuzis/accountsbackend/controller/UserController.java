@@ -86,4 +86,9 @@ public class UserController {
     public ResponseEntity<ChangeDTO<Object>> unBanUser(@PathVariable @Min(0) Integer id){
         return httpUtil.handleServiceResponse(userService.unBanUser(id));
     }
+
+    @PutMapping("/{id}/image")
+    public ResponseEntity<ChangeDTO<Object>> changeImage(@PathVariable @Min(0) Integer id, @RequestParam Integer imglId){
+        return httpUtil.handleServiceResponse(userService.changeImage(id, imglId));
+    }
 }

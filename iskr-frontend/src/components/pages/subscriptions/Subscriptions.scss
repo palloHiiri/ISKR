@@ -20,7 +20,7 @@
       border: 3px solid rgba($pink, 0.3);
       border-top: 3px solid $pink;
       border-radius: 50%;
-      animation: spin 1s linear infinite;
+    animation: spin 1s linear infinite;
     }
 
     p {
@@ -42,17 +42,15 @@
 }
 
 .subscriptions-list {
-  display: flex;
-  flex-direction: row;
-  justify-content: flex-start;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1.5rem;
-  flex-wrap: wrap;
   width: 100%;
   
   .card-element {
-    flex: 0 0 calc(25% - 1.5rem);
-    min-width: 200px;
-    max-width: 200px;
+    width: 100%;
+    min-width: 0;
+    max-width: none;
   }
 }
 
@@ -63,19 +61,15 @@
   padding: 2rem;
 }
 
-.container-title {
-  position: relative;
-}
-
 .load-more-container {
   display: flex;
   justify-content: center;
   padding: 2rem 0;
-  margin-top: 1rem;
-  border-top: 1px solid rgba($pink, 0.3);
+  margin-top: 2rem;
   
   button {
     min-width: 200px;
+    padding: 0.75rem 2rem;
   }
 }
 

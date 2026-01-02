@@ -12,7 +12,7 @@ import {russianLocalWordConverter} from "../../../utils/russianLocalWordConverte
 import PrimaryButton from "../../controls/primary-button/PrimaryButton.tsx";
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import profileAPI from '../../../api/profileService';
-import type { UserSubscriber, PaginatedResponse } from '../../../types/profile';
+import type { UserSubscriber } from '../../../types/profile';
 import { getImageUrl } from '../../../api/popularService';
 import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
 
@@ -37,33 +37,17 @@ function Followers() {
   const [followers, setFollowers] = useState<UserSubscriber[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [pagination, setPagination] = useState({
-    page: 0,
-    totalPages: 1,
-    totalElements: 0,
-    batch: 8
-  });
 
-  // Загрузка подписчиков
+  // Загрузка подписчиков - загружаем всех сразу (большой batch)
   useEffect(() => {
     const loadFollowers = async () => {
       try {
         setLoading(true);
         setError(null);
         
-        const response = await profileAPI.getUserSubscribersPaginated(userId, pagination.batch, pagination.page);
-        
-        if (pagination.page === 0) {
-          setFollowers(response.items);
-        } else {
-          setFollowers(prev => [...prev, ...response.items]);
-        }
-        
-        setPagination(prev => ({
-          ...prev,
-          totalPages: response.totalPages,
-          totalElements: response.totalElements
-        }));
+        // Загружаем всех подписчиков сразу (1000 - большое число чтобы охватить всех)
+        const followersData = await profileAPI.getUserSubscribers(userId, 1000, 0);
+        setFollowers(followersData);
       } catch (err: any) {
         console.error('Error loading followers:', err);
         setError(err.message || 'Ошибка загрузки подписчиков');
@@ -73,7 +57,7 @@ function Followers() {
     };
 
     loadFollowers();
-  }, [userId, pagination.page, pagination.batch]);
+  }, [userId]);
 
   // Загрузка профиля для получения username (для заголовка)
   const [profile, setProfile] = useState<{ displayName: string } | null>(null);
@@ -128,12 +112,6 @@ function Followers() {
     )}`;
   };
 
-  const handleLoadMore = () => {
-    if (pagination.page < pagination.totalPages - 1) {
-      setPagination(prev => ({ ...prev, page: prev.page + 1 }));
-    }
-  };
-
   const handleBackClick = () => {
     navigate(-1);
   };
@@ -175,52 +153,33 @@ function Followers() {
         </div>
 
         <div className="followers-container container">
-          {loading && pagination.page === 0 ? (
+          {loading ? (
             renderLoadingState()
           ) : error ? (
             renderErrorState()
           ) : followers.length > 0 ? (
-            <>
-              <div className="followers-list">
-                {followers.map((follower) => {
-                  const isFollowed = userFollowStates[follower.userId] || false;
-                  const displayName = follower.nickname || follower.username || 'Пользователь';
-                  
-                  return (
-                    <CardElement
-                      key={follower.userId}
-                      title={displayName}
-                      description={getFollowerCount(follower)}
-                      imageUrl={getImageUrl(follower.profileImage) || PlaceholderImage}
-                      button={!isMine} // Для своих подписчиков кнопка не показывается
-                      buttonLabel={isFollowed ? "Отписаться" : "Подписаться"}
-                      buttonIconUrl={isFollowed ? Delete : AddIcon}
-                      onClick={() => handleUserClick(follower)}
-                      onButtonClick={() => handleUserFollow(follower.userId)}
-                      isAuthenticated={isAuthenticated}
-                      onUnauthorized={() => setShowLoginModal(true)}
-                    />
-                  );
-                })}
-              </div>
-              
-              {pagination.page < pagination.totalPages - 1 && (
-                <div className="load-more-container">
-                  <PrimaryButton
-                    label="Загрузить еще"
-                    onClick={handleLoadMore}
-                    disabled={loading}
+            <div className="followers-list">
+              {followers.map((follower) => {
+                const isFollowed = userFollowStates[follower.userId] || false;
+                const displayName = follower.nickname || follower.username || 'Пользователь';
+                
+                return (
+                  <CardElement
+                    key={follower.userId}
+                    title={displayName}
+                    description={getFollowerCount(follower)}
+                    imageUrl={getImageUrl(follower.profileImage) || PlaceholderImage}
+                    button={!isMine} // Для своих подписчиков кнопка не показывается
+                    buttonLabel={isFollowed ? "Отписаться" : "Подписаться"}
+                    buttonIconUrl={isFollowed ? Delete : AddIcon}
+                    onClick={() => handleUserClick(follower)}
+                    onButtonClick={() => handleUserFollow(follower.userId)}
+                    isAuthenticated={isAuthenticated}
+                    onUnauthorized={() => setShowLoginModal(true)}
                   />
-                </div>
-              )}
-              
-              {loading && pagination.page > 0 && (
-                <div className="loading-more">
-                  <div className="loading-spinner-small"></div>
-                  <p>Загрузка...</p>
-                </div>
-              )}
-            </>
+                );
+              })}
+            </div>
           ) : (
             <p className="no-followers-message">
               {getEmptyMessage()}

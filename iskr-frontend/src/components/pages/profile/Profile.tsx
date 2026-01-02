@@ -55,9 +55,9 @@ function Profile() {
         // Загружаем все данные параллельно
         const [profileData, subscribersData, subscriptionsData, collectionsData] = await Promise.all([
           profileAPI.getUserProfile(userId),
-          profileAPI.getUserSubscribers(userId, 6, 0), // Изменено: 6 подписчиков
-          profileAPI.getUserSubscriptions(userId, 6, 0), // Изменено: 6 подписок
-          profileAPI.getUserCollections(userId, 4, 0) // Осталось: 4 коллекции
+          profileAPI.getUserSubscribers(userId, 6, 0),
+          profileAPI.getUserSubscriptions(userId, 6, 0),
+          profileAPI.getUserCollections(userId, 4, 0)
         ]);
 
         setProfile(profileData);
@@ -152,6 +152,12 @@ function Profile() {
     return profile.nickname || profile.username || 'Пользователь';
   };
 
+  // Получаем описание профиля
+  const getProfileDescription = (): string | null => {
+    if (!profile) return null;
+    return profile.profileDescription || null;
+  };
+
   // Рендер состояний загрузки и ошибок
   const renderLoadingState = () => (
     <div className="loading-state">
@@ -207,6 +213,8 @@ function Profile() {
     return <Navigate to="/" replace />;
   }
 
+  const profileDescription = getProfileDescription();
+
   return (
     <main>
       <div className="top-container">
@@ -237,10 +245,12 @@ function Profile() {
           <div className="profile-info-main">
             <div className="profile-info-panel">
               <span className="profile-info-name">{getDisplayName()}</span>
+              
               <div className="profile-avatar-container">
                 <img className="profile-avatar" alt="" src={getAvatarUrl()}/>
                 {isBanned && <div className="profile-avatar-overlay"></div>}
               </div>
+              
               <div className="profile-info-additional-container">
                 <div className="profile-info-additional clickable" onClick={handleSubscriberClick}>
                   <span className="profile-info-label">{getFormattedSubscribersCount()} </span>
@@ -255,6 +265,14 @@ function Profile() {
                   <span className="profile-info-sublabel">коллекций</span>
                 </div>
               </div>
+              
+              {/* Описание профиля */}
+              {profileDescription && (
+  <div className="profile-description">
+    <span className="profile-description-title">Описание профиля</span>
+    <p>{profileDescription}</p>
+  </div>
+)}
             </div>
 
             <div className="profile-info-collections">

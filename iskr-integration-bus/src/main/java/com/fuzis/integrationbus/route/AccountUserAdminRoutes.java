@@ -219,5 +219,30 @@ public class AccountUserAdminRoutes extends RouteBuilder {
                 .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/unban"))
                 .setBody(constant(""))
                 .to("direct:sd-call-finalize");
+
+        from("platform-http:/oapi/v1/accounts/admin/image?httpMethodRestrict=PUT")
+                .routeId("accounts-user-put-image-admin-route")
+                .onException(NoRequiredHeader.class)
+                    .handled(true)
+                    .to("direct:bad-request-error-handler")
+                .end()
+                .onException(AuthenticationException.class)
+                    .handled(true)
+                    .to("direct:auth-error-handler")
+                .end()
+                .onException(ServiceFall.class)
+                    .handled(true)
+                    .to("direct:service-error-handler")
+                .end()
+                .setHeader("X-Headers-Required", constant("New-Image-Id,X-User-Change-ID"))
+                .to("direct:check-params")
+                .setHeader("X-Roles-Required", constant("profile-watch,profile-change,manage-accounts"))
+                .to("direct:auth")
+                .setHeader(Exchange.HTTP_METHOD, constant("PUT"))
+                .setHeader("X-Service", constant("Accounts"))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/username"))
+                .setHeader(Exchange.CONTENT_TYPE, constant("application/x-www-form-urlencoded"))
+                .setBody(simple("imglId=${header.New-Image-Id}"))
+                .to("direct:sd-call-finalize");
     }
 }

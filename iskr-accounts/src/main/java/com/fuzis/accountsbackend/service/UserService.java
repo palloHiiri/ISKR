@@ -1,8 +1,10 @@
 package com.fuzis.accountsbackend.service;
 
+import com.fuzis.accountsbackend.entity.ImageLink;
 import com.fuzis.accountsbackend.entity.User;
 import com.fuzis.accountsbackend.entity.UserProfile;
 import com.fuzis.accountsbackend.entity.enumerate.UserStatus;
+import com.fuzis.accountsbackend.repository.ImageLinkRepository;
 import com.fuzis.accountsbackend.repository.UserProfileRepository;
 import com.fuzis.accountsbackend.repository.UserRepository;
 import com.fuzis.accountsbackend.transfer.ChangeDTO;
@@ -30,12 +32,16 @@ public class UserService
 
     private final IntegrationRequest  integrationRequest;
 
+    private final ImageLinkRepository imageLinkRepository;
+
     public UserService(@Autowired UserRepository userRepository,
                        @Autowired UserProfileRepository userProfileRepository,
-                       @Autowired IntegrationRequest integrationRequest){
+                       @Autowired IntegrationRequest integrationRequest,
+                       @Autowired ImageLinkRepository imageLinkRepository){
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.integrationRequest = integrationRequest;
+        this.imageLinkRepository = imageLinkRepository;
     }
 
     public SelectDTO<User> getUserDataByLogin(String login){
@@ -229,5 +235,20 @@ public class UserService
         catch (Exception e){
             return new ChangeDTO<>(State.Fail, "Unexpected error: " + e.getMessage(), null);
         }
+    }
+
+    public ChangeDTO<Object> changeImage(Integer userId, Integer imglId){
+        Optional<User> user = userRepository.findById(userId);
+        if(user.isEmpty()) {
+            return new ChangeDTO<>(State.Fail, "No user found", null);
+        }
+        Optional<ImageLink> imgl = imageLinkRepository.findById(imglId);
+        if(imgl.isEmpty()) {
+            return new ChangeDTO<>(State.Fail, "No image link found", null);
+        }
+        var profile = user.get().getProfile();
+        profile.setUser_imgl_id(imgl.get());
+        userProfileRepository.save(profile);
+        return new  ChangeDTO<>(State.OK, "Field changed successfully", null);
     }
 }

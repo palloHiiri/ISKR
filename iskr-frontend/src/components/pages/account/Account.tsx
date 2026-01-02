@@ -50,9 +50,9 @@ function Account() {
         // Загружаем все данные параллельно
         const [profileData, subscribersData, subscriptionsData, collectionsData] = await Promise.all([
           profileAPI.getUserProfile(userId),
-          profileAPI.getUserSubscribers(userId, 6, 0), // Изменено: 6 подписчиков
-          profileAPI.getUserSubscriptions(userId, 6, 0), // Изменено: 6 подписок
-          profileAPI.getUserCollections(userId, 4, 0) // Осталось: 4 коллекции
+          profileAPI.getUserSubscribers(userId, 6, 0),
+          profileAPI.getUserSubscriptions(userId, 6, 0),
+          profileAPI.getUserCollections(userId, 4, 0)
         ]);
 
         setProfile(profileData);
@@ -138,6 +138,12 @@ function Account() {
     return profile.nickname || profile.username || 'Пользователь';
   };
 
+  // Получаем описание профиля
+  const getProfileDescription = (): string | null => {
+    if (!profile) return null;
+    return profile.profileDescription || null;
+  };
+
   // Функция для форматирования количества подписчиков с правильным склонением
   const formatSubscribersCount = (count: number): string => {
     const formattedCount = count.toLocaleString('ru-RU');
@@ -205,6 +211,8 @@ function Account() {
     );
   }
 
+  const profileDescription = getProfileDescription();
+
   return (
     <>
       <main>
@@ -218,9 +226,11 @@ function Account() {
             <div className="profile-info-main">
               <div className="profile-info-panel">
                 <span className="profile-info-name">{getDisplayName()}</span>
+                
                 <div className="profile-avatar-container">
                   <img className="profile-avatar" alt="" src={getAvatarUrl()}/>
                 </div>
+                
                 <div className="profile-info-additional-container">
                   <div className="profile-info-additional clickable" onClick={handleSubscriberClick}>
                     <span className="profile-info-label">{(profile.subscribersCount || 0).toLocaleString('ru-RU')} </span>
@@ -259,6 +269,14 @@ function Account() {
                     </span>
                   </div>
                 </div>
+                
+                {/* Описание профиля */}
+                {profileDescription && (
+  <div className="profile-description">
+    <span className="profile-description-title">Описание профиля</span>
+    <p>{profileDescription}</p>
+  </div>
+)}
               </div>
 
               <div className="profile-info-collections">
