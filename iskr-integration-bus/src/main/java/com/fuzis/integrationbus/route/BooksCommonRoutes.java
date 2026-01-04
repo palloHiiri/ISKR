@@ -342,14 +342,12 @@ public class BooksCommonRoutes extends RouteBuilder {
                 .handled(true)
                 .to("direct:auth-error-handler")
                 .end()
-                .setHeader("X-Headers-Required", constant("bookId"))
-                .to("direct:check-params")
                 .setHeader("X-Roles-Required", constant(""))
                 .to("direct:auth")
                 .setHeader(Exchange.HTTP_METHOD, constant("POST"))
                 .setHeader("X-Service", constant("Books"))
                 .setHeader("userId", simple("${header.X-User-ID}"))
-                .setHeader("X-Service-Request", simple("api/v1/books/${header.bookId}"))
+                .setHeader("X-Service-Request", simple("api/v1/books"))
                 .to("direct:sd-call-finalize");
 
         from("platform-http:/oapi/v1/book?httpMethodRestrict=DELETE")

@@ -29,10 +29,8 @@ public class BookCreateDTO {
     @Min(value = 1, message = "User ID must be at least 1")
     private Integer addedBy;
 
-    @NotEmpty(message = "At least one author is required")
     private Set<Integer> authorIds;
-
-    @NotEmpty(message = "At least one genre is required")
+    
     private Set<Integer> genreIds;
 
     @Size(max = 1024, message = "Subtitle must not exceed 1024 characters")

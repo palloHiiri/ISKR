@@ -327,6 +327,48 @@ export const bookAPI = {
       throw error;
     }
   },
+  createBook: async (data: {
+    title: string;
+    subtitle?: string | null;
+    description?: string | null;
+    pageCnt: number;
+    isbn?: string | null;
+    addedBy: number;
+    authorIds: number[];
+    genreIds: number[];
+    photoLink?: number | null;
+  }): Promise<BookDetail> => {
+    try {
+      const response = await axios.post<ApiResponse<BookDetail>>(
+        `${OAPI_BASE_URL}/v1/book`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.data.state === 'OK') {
+        return response.data.data.key;
+      }
+
+      throw new Error(response.data.data.message || 'Не удалось создать книгу');
+    } catch (error: any) {
+      console.error('Error creating book:', error);
+      console.error('Request data:', data);
+
+      if (error.response?.data?.data?.details) {
+        const errorDetails = error.response.data.data.details;
+        const errorMessage = errorDetails.message || 'Ошибка при создании книги';
+        const errorWithDetails = new Error(errorMessage);
+        (errorWithDetails as any).response = error.response;
+        throw errorWithDetails;
+      }
+
+      throw error;
+    }
+  },
 };
 
 export default bookAPI; 

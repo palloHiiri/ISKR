@@ -1,4 +1,4 @@
-import {useEffect, useState, useCallback} from "react";
+import { useEffect, useState, useCallback } from "react";
 import "../home/Home.scss";
 import "../statistic/Statistic.scss";
 import "./Library.scss";
@@ -12,15 +12,15 @@ import Open from "../../../assets/elements/open.svg";
 import Delete from "../../../assets/elements/delete.svg";
 import Modal from "../../controls/modal/Modal.tsx";
 import ConfirmDialog from "../../controls/confirm-dialog/ConfirmDialog.tsx";
-import BookForm, {type BookFormData} from "../../controls/book-form/BookForm.tsx";
+import BookForm, { type BookFormData } from "../../controls/book-form/BookForm.tsx";
 import DefaultBookCover from "../../../assets/images/books/tri-tovarischa.jpg";
-import CollectionForm, {type CollectionFormData} from "../../controls/collection-form/CollectionForm.tsx";
+import CollectionForm, { type CollectionFormData } from "../../controls/collection-form/CollectionForm.tsx";
 import SearchFilters from "../../controls/search-filters/SearchFilters.tsx";
 import Stars from "../../stars/Stars.tsx";
 import AddIcon from "../../../assets/elements/add.svg";
-import {useLocation, useNavigate} from "react-router-dom";
-import {useSelector} from "react-redux";
-import type {RootState} from "../../../redux/store.ts";
+import { useLocation, useNavigate } from "react-router-dom";
+import { useSelector } from "react-redux";
+import type { RootState } from "../../../redux/store.ts";
 import libraryAPI, { type LibraryBook, type LibraryCollection } from '../../../api/libraryService';
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import Avatar1 from '../../../assets/images/users/avatar1.jpg';
@@ -31,6 +31,7 @@ import Avatar5 from '../../../assets/images/users/avatar5.jpg';
 import Avatar6 from '../../../assets/images/users/avatar6.jpg';
 import Avatar7 from '../../../assets/images/users/avatar7.jpg';
 import Avatar8 from '../../../assets/images/users/avatar8.jpg';
+import CreateBookModal from "../../controls/create-book-modal/CreateBookModal";
 
 // Локальные интерфейсы для компонента
 interface Book {
@@ -52,7 +53,7 @@ interface Collection {
 }
 
 function Library() {
-  const {user, isAuthenticated} = useSelector((state: RootState) => state.auth);
+  const { user, isAuthenticated } = useSelector((state: RootState) => state.auth);
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -61,12 +62,12 @@ function Library() {
   const [libraryCollections, setLibraryCollections] = useState<LibraryCollection[]>([]);
   const [wishlistBooks, setWishlistBooks] = useState<LibraryBook[]>([]);
   const [wishlistId, setWishlistId] = useState<number | undefined>(undefined);
-  
+
   // Преобразованные данные для отображения
   const [books, setBooks] = useState<Book[]>([]);
   const [collections, setCollections] = useState<Collection[]>([]);
   const [wishlist, setWishlist] = useState<Book[]>([]);
-  
+
   // Состояния загрузки
   const [loadingBooks, setLoadingBooks] = useState(true);
   const [loadingCollections, setLoadingCollections] = useState(true);
@@ -79,7 +80,7 @@ function Library() {
       console.log(`No image for book: ${book.title}`, book.photoLink);
       return PlaceholderImage;
     }
-    
+
     const url = `/images/${book.photoLink.imageData.uuid}.${book.photoLink.imageData.extension}`;
     console.log(`Book image URL for ${book.title}:`, url);
     return url;
@@ -91,7 +92,7 @@ function Library() {
       console.log(`No image for collection: ${collection.title}`, collection.photoLink);
       return PlaceholderImage;
     }
-    
+
     const url = `/images/${collection.photoLink.imageData.uuid}.${collection.photoLink.imageData.extension}`;
     console.log(`Collection image URL for ${collection.title}:`, url);
     return url;
@@ -101,9 +102,9 @@ function Library() {
   const transformLibraryBookToBook = (libBook: LibraryBook): Book => {
     const authors = libBook.authors.map(a => a.name).join(', ');
     const rating = libBook.averageRating ? libBook.averageRating / 2 : undefined;
-    
+
     const imageUrl = getBookImageUrl(libBook);
-    
+
     return {
       id: libBook.bookId.toString(),
       title: libBook.title,
@@ -117,7 +118,7 @@ function Library() {
   // Функция для преобразования LibraryCollection в Collection
   const transformLibraryCollectionToCollection = (libCollection: LibraryCollection): Collection => {
     const imageUrl = getCollectionImageUrl(libCollection);
-    
+
     return {
       id: libCollection.bcolsId.toString(),
       title: libCollection.title,
@@ -132,16 +133,16 @@ function Library() {
   const loadLibraryData = useCallback(async () => {
     try {
       setLoadingError(null);
-      
+
       console.log("Начинаем загрузку данных библиотеки...");
-      
+
       // Загружаем все данные параллельно
       const [booksData, collectionsData, wishlistData] = await Promise.allSettled([
         libraryAPI.getLibraryBooks(),
         libraryAPI.getLibraryCollections(),
         libraryAPI.getWishlist()
       ]);
-      
+
       // Обработка книг
       if (booksData.status === 'fulfilled') {
         console.log("Книги загружены:", booksData.value);
@@ -152,7 +153,7 @@ function Library() {
         console.error('Error loading books:', booksData.reason);
       }
       setLoadingBooks(false);
-      
+
       // Обработка коллекций
       if (collectionsData.status === 'fulfilled') {
         console.log("Коллекции загружены:", collectionsData.value);
@@ -163,7 +164,7 @@ function Library() {
         console.error('Error loading collections:', collectionsData.reason);
       }
       setLoadingCollections(false);
-      
+
       // Обработка вишлиста
       if (wishlistData.status === 'fulfilled') {
         console.log("Вишлист загружен:", wishlistData.value.books);
@@ -175,7 +176,7 @@ function Library() {
         console.error('Error loading wishlist:', wishlistData.reason);
       }
       setLoadingWishlist(false);
-      
+
     } catch (error: any) {
       console.error('Error loading library data:', error);
       setLoadingError(error.message || 'Ошибка загрузки данных библиотеки');
@@ -191,7 +192,7 @@ function Library() {
   }, [loadLibraryData]);
 
   // Модальные окна и состояния
-  const [isAddBookOpen, setIsAddBookOpen] = useState(false);
+  const [isCreateBookOpen, setIsCreateBookOpen] = useState(false);
   const [highlightedBookId, setHighlightedBookId] = useState<string | null>(null);
   const [isAddCollectionOpen, setIsAddCollectionOpen] = useState(false);
   const [highlightedCollectionId, setHighlightedCollectionId] = useState<string | null>(null);
@@ -221,7 +222,7 @@ function Library() {
 
   // Функции для обработки событий (пока оставляем моковые, потом заменим на API)
   const handleAddBookClick = () => {
-    setIsAddBookOpen(true);
+    setIsCreateBookOpen(true);
   };
 
   const handleBookFormSubmit = (bookData: BookFormData) => {
@@ -291,17 +292,17 @@ function Library() {
     const query = searchQuery.toLowerCase().trim();
     if (!query) return { books: [], users: [], collections: [] };
 
-    const filteredBooks = books.filter(book => 
-      book.title.toLowerCase().includes(query) || 
+    const filteredBooks = books.filter(book =>
+      book.title.toLowerCase().includes(query) ||
       book.author.toLowerCase().includes(query)
     );
 
-    const filteredUsers = libraryUsers.filter(user => 
+    const filteredUsers = libraryUsers.filter(user =>
       user.username.toLowerCase().includes(query)
     );
 
-    const filteredCollections = collections.filter(collection => 
-      collection.title.toLowerCase().includes(query) || 
+    const filteredCollections = collections.filter(collection =>
+      collection.title.toLowerCase().includes(query) ||
       collection.creator.toLowerCase().includes(query)
     );
 
@@ -433,15 +434,15 @@ function Library() {
     if (loadingBooks) {
       return renderLoadingState("Загрузка книг...");
     }
-    
+
     if (loadingError) {
       return renderErrorState(loadingError);
     }
-    
+
     if (books.length === 0) {
       return <p className="no-books-message">У вас пока нет добавленных книг.</p>;
     }
-    
+
     return (
       <VerticalAccordion
         header={
@@ -543,15 +544,15 @@ function Library() {
     if (loadingCollections) {
       return renderLoadingState("Загрузка коллекций...");
     }
-    
+
     if (loadingError) {
       return renderErrorState(loadingError);
     }
-    
+
     if (collections.length === 0) {
       return <p className="no-books-message">У вас пока нет созданных коллекций.</p>;
     }
-    
+
     return (
       <VerticalAccordion
         header={
@@ -641,15 +642,15 @@ function Library() {
     if (loadingWishlist) {
       return renderLoadingState("Загрузка вишлиста...");
     }
-    
+
     if (loadingError) {
       return renderErrorState(loadingError);
     }
-    
+
     if (wishlist.length === 0) {
       return <p className="no-books-message">В вашем вишлисте пока нет книг.</p>;
     }
-    
+
     return (
       <VerticalAccordion
         header={
@@ -731,14 +732,14 @@ function Library() {
                             {searchResults.books.map((book) => (
                               <div key={book.id} className="search-result-row">
                                 <div className="search-result-info" onClick={() => handleSearchBookClick(book)} style={{ cursor: 'pointer' }}>
-                                  <img src={book.imageUrl} alt="Book cover"/>
+                                  <img src={book.imageUrl} alt="Book cover" />
                                   <div>
                                     <p className="search-result-title">{book.title}</p>
                                     <p className="search-result-author">{book.author}</p>
                                   </div>
                                 </div>
                                 <div className="search-result-actions">
-                                  <Stars count={book.rating ? Math.round(book.rating) : 0}/>
+                                  <Stars count={book.rating ? Math.round(book.rating) : 0} />
                                   <button
                                     className={isBookInWishlist ? 'active' : ''}
                                     onClick={(e) => {
@@ -746,7 +747,7 @@ function Library() {
                                       setIsBookInWishlist(!isBookInWishlist);
                                     }}
                                   >
-                                    <img src={isBookInWishlist ? Delete : AddIcon} alt=""/>
+                                    <img src={isBookInWishlist ? Delete : AddIcon} alt="" />
                                     <span>{isBookInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист'}</span>
                                   </button>
                                 </div>
@@ -760,7 +761,7 @@ function Library() {
                             {searchResults.users.map((user) => (
                               <div key={user.id} className="search-result-row">
                                 <div className="search-result-info" onClick={() => handleSearchUserClick(user)} style={{ cursor: 'pointer' }}>
-                                  <img src={user.avatar} alt="User avatar"/>
+                                  <img src={user.avatar} alt="User avatar" />
                                   <div>
                                     <p className="search-result-title">{user.username}</p>
                                     <p className="search-result-author">{user.followers} подписчиков</p>
@@ -774,7 +775,7 @@ function Library() {
                                       setIsUserFollowed(!isUserFollowed);
                                     }}
                                   >
-                                    <img src={isUserFollowed ? Delete : AddIcon} alt=""/>
+                                    <img src={isUserFollowed ? Delete : AddIcon} alt="" />
                                     <span>{isUserFollowed ? 'Отписаться' : 'Подписаться'}</span>
                                   </button>
                                 </div>
@@ -788,7 +789,7 @@ function Library() {
                             {searchResults.collections.map((collection) => (
                               <div key={collection.id} className="search-result-row">
                                 <div className="search-result-info" onClick={() => handleSearchCollectionClick(collection)} style={{ cursor: 'pointer' }}>
-                                  <img src={collection.imageUrl} alt="Collection cover"/>
+                                  <img src={collection.imageUrl} alt="Collection cover" />
                                   <div>
                                     <p className="search-result-title">{collection.title}</p>
                                     <p className="search-result-author">{collection.creator}</p>
@@ -803,7 +804,7 @@ function Library() {
                                       setIsCollectionFavorited(!isCollectionFavorited);
                                     }}
                                   >
-                                    <img src={isCollectionFavorited ? Delete : AddIcon} alt=""/>
+                                    <img src={isCollectionFavorited ? Delete : AddIcon} alt="" />
                                     <span>{isCollectionFavorited ? 'Удалить из избранного' : 'Добавить в избранное'}</span>
                                   </button>
                                 </div>
@@ -829,7 +830,7 @@ function Library() {
         <div className="top-container">
           <div className="container-title-with-button">
             <h2>Мои книги</h2>
-            <PrimaryButton label={"Добавить книгу"} onClick={handleAddBookClick}/>
+            <PrimaryButton label={"Добавить книгу"} onClick={handleAddBookClick} />
           </div>
           {renderBooksSection()}
         </div>
@@ -837,7 +838,7 @@ function Library() {
         <div className="top-container">
           <div className="container-title-with-button">
             <h2>Мои коллекции</h2>
-            <PrimaryButton label={"Создать коллекцию"} onClick={handleAddCollectionClick}/>
+            <PrimaryButton label={"Создать коллекцию"} onClick={handleAddCollectionClick} />
           </div>
           {renderCollectionsSection()}
         </div>
@@ -845,19 +846,19 @@ function Library() {
         <div className="top-container">
           <div className="container-title-with-button">
             <h2>Мой вишлист</h2>
-            <PrimaryButton label={"Очистить вишлист"} onClick={handleClearWishlistClick}/>
+            <PrimaryButton label={"Очистить вишлист"} onClick={handleClearWishlistClick} />
           </div>
           {renderWishlistSection()}
         </div>
       </main>
 
       {/* Модальные окна */}
-      <Modal open={isAddBookOpen} onClose={() => setIsAddBookOpen(false)}>
-        <BookForm
-          onSubmit={handleBookFormSubmit}
-          onCancel={() => setIsAddBookOpen(false)}
-        />
-      </Modal>
+
+      <CreateBookModal
+        open={isCreateBookOpen}
+        onClose={() => setIsCreateBookOpen(false)}
+      />
+
 
       <Modal open={isAddCollectionOpen} onClose={() => setIsAddCollectionOpen(false)}>
         <CollectionForm
