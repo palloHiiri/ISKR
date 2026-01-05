@@ -9,6 +9,7 @@ import { useSelector } from 'react-redux';
 import type { RootState } from '../../../redux/store';
 import collectionAPI, { type CreateCollectionData } from '../../../api/collectionService';
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
+import wishlistService from '../../../api/wishlistService';
 
 interface CreateCollectionModalProps {
   open: boolean;
@@ -25,6 +26,7 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [confidentiality, setConfidentiality] = useState<'Public' | 'Private'>('Public');
+  const [collectionType, setCollectionType] = useState<'Standard' | 'Wishlist' | 'Liked'>('Standard');
   
   // Обложка
   const [selectedCoverId, setSelectedCoverId] = useState<number | null>(null);
@@ -37,6 +39,15 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [validationErrors, setValidationErrors] = useState<Record<string, string>>({});
+  const [hasWishlist, setHasWishlist] = useState<boolean>(false);
+  const [checkingWishlist, setCheckingWishlist] = useState(true);
+
+  // Проверка наличия вишлиста при открытии
+  useEffect(() => {
+    if (open) {
+      checkExistingWishlist();
+    }
+  }, [open]);
 
   // Сброс формы при открытии
   useEffect(() => {
@@ -44,6 +55,7 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
       setTitle('');
       setDescription('');
       setConfidentiality('Public');
+      setCollectionType('Standard');
       setSelectedCoverId(null);
       setCoverPreviewUrl(null);
       setActiveSubModal(null);
@@ -51,6 +63,19 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
       setValidationErrors({});
     }
   }, [open]);
+
+  const checkExistingWishlist = async () => {
+    setCheckingWishlist(true);
+    try {
+      const wishlistInfo = await wishlistService.checkWishlist();
+      setHasWishlist(wishlistInfo.hasWishlist);
+    } catch (error) {
+      console.error('Error checking wishlist:', error);
+      setHasWishlist(false);
+    } finally {
+      setCheckingWishlist(false);
+    }
+  };
 
   const validateForm = (): boolean => {
     const errors: Record<string, string> = {};
@@ -76,6 +101,12 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
       return;
     }
 
+    // Проверяем, можно ли создать вишлист
+    if (collectionType === 'Wishlist' && hasWishlist) {
+      setError('У вас уже есть вишлист. Вишлист можно создать только один раз.');
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -84,7 +115,7 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
         title: title.trim(),
         description: description.trim() || '',
         confidentiality,
-        collectionType: 'Standard',
+        collectionType: collectionType,
         photoLink: selectedCoverId || null
       };
 
@@ -189,6 +220,45 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
 
           <div className="form-group">
             <label className="form-label required">
+              Тип коллекции
+            </label>
+            <div className="collection-type-options">
+              <label className="collection-type-option">
+                <input
+                  type="radio"
+                  name="collectionType"
+                  value="Standard"
+                  checked={collectionType === 'Standard'}
+                  onChange={(e) => setCollectionType(e.target.value as 'Standard' | 'Wishlist' | 'Liked')}
+                  disabled={loading}
+                />
+                <span className="option-label">
+                  <span className="option-title">Обычная коллекция</span>
+                  <span className="option-description">Стандартная коллекция для ваших книг</span>
+                </span>
+              </label>
+              <label className="collection-type-option">
+                <input
+                  type="radio"
+                  name="collectionType"
+                  value="Wishlist"
+                  checked={collectionType === 'Wishlist'}
+                  onChange={(e) => setCollectionType(e.target.value as 'Standard' | 'Wishlist' | 'Liked')}
+                  disabled={loading || hasWishlist}
+                />
+                <span className="option-label">
+                  <span className="option-title">Вишлист</span>
+                  <span className="option-description">Список книг, которые вы хотите прочитать</span>
+                  {hasWishlist && (
+                    <span className="option-hint">(У вас уже есть вишлист)</span>
+                  )}
+                </span>
+              </label>
+            </div>
+          </div>
+
+          <div className="form-group">
+            <label className="form-label required">
               Конфиденциальность
             </label>
             <div className="confidentiality-options">
@@ -241,9 +311,15 @@ function CreateCollectionModal({ open, onClose, onCollectionCreated }: CreateCol
         <PrimaryButton
           label={loading ? "Создание..." : "Создать коллекцию"}
           onClick={handleCreateCollection}
-          disabled={loading}
+          disabled={loading || checkingWishlist}
         />
       </div>
+
+      {checkingWishlist && (
+        <div className="loading-message">
+          <p>Проверка наличия вишлиста...</p>
+        </div>
+      )}
     </>
   );
 

@@ -17,6 +17,36 @@
     text-align: center;
     font-weight: bold;
   }
+
+  .loading-message {
+    text-align: center;
+    margin-top: 1rem;
+    color: rgba(255, 255, 255, 0.7);
+    font-size: 0.9rem;
+  }
+
+  .info-message {
+    background: rgba(66, 135, 245, 0.1);
+    border: 1px solid rgba(66, 135, 245, 0.3);
+    border-radius: 8px;
+    padding: 0.75rem 1rem;
+    margin-top: 1rem;
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+
+    .info-icon {
+      color: #4287f5;
+      font-size: 1rem;
+      flex-shrink: 0;
+    }
+
+    span {
+      color: #88b4ff;
+      font-size: 0.95rem;
+      line-height: 1.4;
+    }
+  }
 }
 
 .create-collection-content {
@@ -147,6 +177,66 @@
   margin-top: 0.25rem;
 }
 
+// Стили для выбора типа коллекции
+.collection-type-options {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+
+  .collection-type-option {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+
+    &:hover:not(:has(input:disabled)) {
+      background: rgba($pink, 0.05);
+      border-color: rgba($pink, 0.3);
+    }
+
+    &:has(input:disabled) {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    input[type="radio"] {
+      margin-top: 0.25rem;
+      accent-color: $pink;
+    }
+
+    .option-label {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+      flex: 1;
+
+      .option-title {
+        color: #FFFFFF;
+        font-weight: 500;
+        font-size: 1rem;
+      }
+
+      .option-description {
+        color: rgba(255, 255, 255, 0.6);
+        font-size: 0.9rem;
+        line-height: 1.4;
+      }
+
+      .option-hint {
+        color: #4287f5;
+        font-size: 0.85rem;
+        font-style: italic;
+      }
+    }
+  }
+}
+
+// Стили для выбора конфиденциальности
 .confidentiality-options {
   display: flex;
   flex-direction: column;

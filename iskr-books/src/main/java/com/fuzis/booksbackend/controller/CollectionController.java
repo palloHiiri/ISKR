@@ -162,4 +162,50 @@ public class CollectionController {
                 collectionService.checkBookInCollection(userId, collectionId, bookId)
         );
     }
+
+    @GetMapping("/wishlist/check")
+    public ResponseEntity<ChangeDTO<Object>> checkWishlist(
+            @RequestHeader Integer userId) {
+        return httpUtil.handleServiceResponse(
+                collectionService.checkUserWishlist(userId)
+        );
+    }
+
+    // Новый эндпоинт: добавление книги в вишлист
+    @PostMapping("/wishlist/books")
+    public ResponseEntity<ChangeDTO<Object>> addBookToWishlist(
+            @RequestHeader Integer userId,
+            @Valid @RequestBody AddBookRequestDTO addBookRequestDTO) {
+        return httpUtil.handleServiceResponse(
+                collectionService.addBookToWishlist(userId, addBookRequestDTO.getBookId())
+        );
+    }
+
+    // Новый эндпоинт: удаление книги из вишлиста
+    @DeleteMapping("/wishlist/books/{bookId}")
+    public ResponseEntity<ChangeDTO<Object>> removeBookFromWishlist(
+            @RequestHeader Integer userId,
+            @PathVariable @Min(1) Integer bookId) {
+        return httpUtil.handleServiceResponse(
+                collectionService.removeBookFromWishlist(userId, bookId)
+        );
+    }
+
+    // Новый эндпоинт: полная очистка вишлиста
+    @DeleteMapping("/wishlist/books")
+    public ResponseEntity<ChangeDTO<Object>> clearWishlist(
+            @RequestHeader Integer userId) {
+        return httpUtil.handleServiceResponse(
+                collectionService.clearWishlist(userId)
+        );
+    }
+
+    @GetMapping("/wishlist/books/{bookId}/exists")
+    public ResponseEntity<ChangeDTO<Object>> checkBookInWishlist(
+            @RequestHeader Integer userId,
+            @PathVariable @Min(1) Integer bookId) {
+        return httpUtil.handleServiceResponse(
+                collectionService.checkBookInWishlist(userId, bookId)
+        );
+    }
 }

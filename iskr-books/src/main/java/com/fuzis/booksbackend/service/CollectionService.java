@@ -105,8 +105,8 @@ public class CollectionService {
             dto.setCollectionId(collection.getBcolsId());
             dto.setTitle(collection.getTitle());
             dto.setDescription(collection.getDescription());
-            dto.setConfidentiality(collection.getConfidentiality().name());
-            dto.setCollectionType(collection.getCollectionType().name());
+            dto.setConfidentiality(String.valueOf(collection.getConfidentiality()));
+            dto.setCollectionType(String.valueOf(collection.getCollectionType()));
             dto.setPhotoLink(photoLinkDTO);
             dto.setOwnerId(collection.getOwner() != null ? collection.getOwner().getUserId() : null);
             dto.setOwnerNickname(ownerNickname);
@@ -297,19 +297,41 @@ public class CollectionService {
             }
 
             // Валидация confidentiality
-            try {
-                Confidentiality.valueOf(dto.getConfidentiality());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid confidentiality value: {}", dto.getConfidentiality());
-                return new ChangeDTO<>(State.Fail_BadData, "Invalid confidentiality value", null);
+            String confidentiality = dto.getConfidentiality();
+            if (confidentiality == null || confidentiality.isBlank()) {
+                log.warn("Confidentiality is required");
+                return new ChangeDTO<>(State.Fail_BadData, "Confidentiality is required", null);
+            }
+
+            if (!"Public".equalsIgnoreCase(confidentiality) && !"Private".equalsIgnoreCase(confidentiality)) {
+                log.warn("Invalid confidentiality value: {}", confidentiality);
+                return new ChangeDTO<>(State.Fail_BadData,
+                        "Invalid confidentiality value. Must be: Public or Private", null);
             }
 
             // Валидация collectionType
-            try {
-                CollectionType.valueOf(dto.getCollectionType());
-            } catch (IllegalArgumentException e) {
-                log.warn("Invalid collection type value: {}", dto.getCollectionType());
-                return new ChangeDTO<>(State.Fail_BadData, "Invalid collection type value", null);
+            String collectionType = dto.getCollectionType();
+            if (collectionType == null || collectionType.isBlank()) {
+                log.warn("Collection type is required");
+                return new ChangeDTO<>(State.Fail_BadData, "Collection type is required", null);
+            }
+
+            if (!"Standard".equalsIgnoreCase(collectionType) &&
+                    !"Liked".equalsIgnoreCase(collectionType) &&
+                    !"Wishlist".equalsIgnoreCase(collectionType)) {
+                log.warn("Invalid collection type value: {}", collectionType);
+                return new ChangeDTO<>(State.Fail_BadData,
+                        "Invalid collection type value. Must be: Standard, Liked or Wishlist", null);
+            }
+
+            // Проверяем, не пытается ли пользователь создать второй вишлист
+            if ("Wishlist".equalsIgnoreCase(collectionType)) {
+                boolean hasWishlist = bookCollectionRepository.existsWishlistByUserId(userId);
+                if (hasWishlist) {
+                    log.warn("User {} already has a wishlist", userId);
+                    return new ChangeDTO<>(State.Fail_Conflict,
+                            "User can only have one wishlist", null);
+                }
             }
 
             // Проверяем photoLink если указан
@@ -318,7 +340,8 @@ public class CollectionService {
                 Optional<ImageLink> photoLinkOpt = imageLinkRepository.findById(dto.getPhotoLink());
                 if (photoLinkOpt.isEmpty()) {
                     log.warn("ImageLink not found with ID: {}", dto.getPhotoLink());
-                    return new ChangeDTO<>(State.Fail_NotFound, "Image with specified photo link does not exist", null);
+                    return new ChangeDTO<>(State.Fail_NotFound,
+                            "Image with specified photo link does not exist", null);
                 }
                 photoLink = photoLinkOpt.get();
             }
@@ -328,8 +351,8 @@ public class CollectionService {
                     .owner(userOpt.get())
                     .title(dto.getTitle())
                     .description(dto.getDescription())
-                    .confidentiality(Confidentiality.valueOf(dto.getConfidentiality()))
-                    .collectionType(CollectionType.valueOf(dto.getCollectionType()))
+                    .confidentiality(Confidentiality.valueOf(confidentiality))
+                    .collectionType(CollectionType.valueOf(collectionType))
                     .photoLink(photoLink)
                     .build();
 
@@ -379,23 +402,37 @@ public class CollectionService {
             }
 
             if (dto.getConfidentiality() != null && !dto.getConfidentiality().isBlank()) {
-                try {
-                    collection.setConfidentiality(Confidentiality.valueOf(dto.getConfidentiality()));
-                } catch (IllegalArgumentException e) {
+                if (!"Public".equalsIgnoreCase(dto.getConfidentiality()) &&
+                        !"Private".equalsIgnoreCase(dto.getConfidentiality())) {
                     log.warn("Invalid confidentiality value: {}", dto.getConfidentiality());
                     return new ChangeDTO<>(State.Fail_BadData,
-                            "Invalid confidentiality value. Must be one of: Public, Private", null);
+                            "Invalid confidentiality value. Must be: Public or Private", null);
                 }
+                collection.setConfidentiality(Confidentiality.valueOf(dto.getConfidentiality()));
             }
 
             if (dto.getCollectionType() != null && !dto.getCollectionType().isBlank()) {
-                try {
-                    collection.setCollectionType(CollectionType.valueOf(dto.getCollectionType()));
-                } catch (IllegalArgumentException e) {
+                if (!"Standard".equalsIgnoreCase(dto.getCollectionType()) &&
+                        !"Liked".equalsIgnoreCase(dto.getCollectionType()) &&
+                        !"Wishlist".equalsIgnoreCase(dto.getCollectionType())) {
                     log.warn("Invalid collection type value: {}", dto.getCollectionType());
                     return new ChangeDTO<>(State.Fail_BadData,
-                            "Invalid collection type value. Must be one of: Standard, Liked, Wishlist", null);
+                            "Invalid collection type value. Must be: Standard, Liked or Wishlist", null);
                 }
+
+                // Если пытаемся изменить тип на Wishlist, проверяем, нет ли уже вишлиста
+                if ("Wishlist".equalsIgnoreCase(dto.getCollectionType()) &&
+                        !"Wishlist".equalsIgnoreCase(String.valueOf(collection.getCollectionType()))) {
+
+                    boolean hasWishlist = bookCollectionRepository.existsWishlistByUserId(userId);
+                    if (hasWishlist) {
+                        log.warn("User {} already has a wishlist, cannot convert collection to wishlist", userId);
+                        return new ChangeDTO<>(State.Fail_Conflict,
+                                "User can only have one wishlist", null);
+                    }
+                }
+
+                collection.setCollectionType(CollectionType.valueOf(dto.getCollectionType()));
             }
 
             // Обновляем photoLink если предоставлен
@@ -423,117 +460,6 @@ public class CollectionService {
             log.error("Error updating collection: ", e);
             return new ChangeDTO<>(State.Fail, "Error updating collection: " + e.getMessage(), null);
         }
-    }
-
-    // Новый метод: проверка, лайкнул ли пользователь коллекцию
-    @Transactional(readOnly = true)
-    public ChangeDTO<Object> checkIfLikedCollection(Integer userId, Integer collectionId) {
-        try {
-            log.debug("Checking if user {} liked collection {}", userId, collectionId);
-
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for checking like status");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
-            }
-
-            // Проверяем существование пользователя
-            Optional<User> userOpt = userRepository.findById(userId);
-            if (userOpt.isEmpty()) {
-                log.warn("User not found with ID: {}", userId);
-                return new ChangeDTO<>(State.Fail_NotFound, "User not found", null);
-            }
-
-            // Проверяем существование коллекции
-            Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
-            if (collectionOpt.isEmpty()) {
-                log.warn("Collection not found with ID: {}", collectionId);
-                return new ChangeDTO<>(State.Fail_NotFound, "Collection not found", null);
-            }
-
-            // Проверяем, лайкнул ли пользователь коллекцию
-            boolean isLiked = likedCollectionRepository.existsByUserIdAndCollectionId(userId, collectionId);
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("collectionId", collectionId);
-            response.put("userId", userId);
-            response.put("isLiked", isLiked);
-
-            log.debug("Like check result for user {} on collection {}: {}", userId, collectionId, isLiked);
-            return new ChangeDTO<>(State.OK, "Like status retrieved successfully", response);
-
-        } catch (Exception e) {
-            log.error("Error checking like status: ", e);
-            return new ChangeDTO<>(State.Fail, "Error checking like status: " + e.getMessage(), null);
-        }
-    }
-
-    // Новый метод: получение всех CVP коллекции
-    @Transactional(readOnly = true)
-    public ChangeDTO<Object> getCollectionPrivileges(Integer userId, Integer collectionId) {
-        try {
-            log.debug("Getting privileges for collection ID: {} by user ID: {}", collectionId, userId);
-
-            // Получаем коллекцию
-            Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
-            if (collectionOpt.isEmpty()) {
-                log.warn("Collection not found with ID: {}", collectionId);
-                return new ChangeDTO<>(State.Fail_NotFound, "Collection not found", null);
-            }
-
-            BookCollection collection = collectionOpt.get();
-
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to view privileges for collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
-            }
-
-            // Получаем все CVP для коллекции
-            List<CollectionViewPrivilege> privileges = collectionViewPrivilegeRepository
-                    .findByBcolsId(collectionId);
-
-            // Преобразуем в DTO
-            List<CollectionPrivilegeDTO> privilegeDTOs = privileges.stream()
-                    .map(this::convertToCollectionPrivilegeDTO)
-                    .collect(Collectors.toList());
-
-            Map<String, Object> response = new HashMap<>();
-            response.put("collectionId", collectionId);
-            response.put("totalPrivileges", privilegeDTOs.size());
-            response.put("privileges", privilegeDTOs);
-
-            log.debug("Retrieved {} privileges for collection {}", privilegeDTOs.size(), collectionId);
-            return new ChangeDTO<>(State.OK, "Privileges retrieved successfully", response);
-
-        } catch (Exception e) {
-            log.error("Error retrieving collection privileges: ", e);
-            return new ChangeDTO<>(State.Fail, "Error retrieving privileges: " + e.getMessage(), null);
-        }
-    }
-
-    // Вспомогательный метод: преобразование CVP в DTO
-    private CollectionPrivilegeDTO convertToCollectionPrivilegeDTO(CollectionViewPrivilege privilege) {
-        CollectionPrivilegeDTO dto = new CollectionPrivilegeDTO();
-        dto.setCvpId(privilege.getCvpId());
-        dto.setCollectionId(privilege.getBcolsId());
-        dto.setUserId(privilege.getUserId());
-        dto.setStatus(privilege.getStatus().name());
-
-        // Получаем информацию о пользователе
-        Optional<User> userOpt = userRepository.findById(privilege.getUserId());
-        if (userOpt.isPresent()) {
-            User user = userOpt.get();
-            dto.setUsername(user.getUsername());
-
-            // Получаем профиль пользователя для nickname
-            List<User> usersWithProfiles = userRepository.findByIdsWithProfiles(List.of(user.getUserId()));
-            if (!usersWithProfiles.isEmpty() && usersWithProfiles.get(0).getProfile() != null) {
-                dto.setNickname(usersWithProfiles.get(0).getProfile().getNickname());
-            }
-        }
-
-        return dto;
     }
 
     @Transactional
@@ -710,12 +636,13 @@ public class CollectionService {
             }
 
             // Валидация статуса
-            CvpStatus status;
-            try {
-                status = CvpStatus.valueOf(dto.getCvpStatus());
-            } catch (IllegalArgumentException e) {
+            String status = dto.getCvpStatus();
+            if (!"Allowed".equalsIgnoreCase(status) &&
+                    !"Pending".equalsIgnoreCase(status) &&
+                    !"Denied".equalsIgnoreCase(status)) {
                 log.warn("Invalid CVP status value: {}", dto.getCvpStatus());
-                return new ChangeDTO<>(State.Fail_BadData, "Invalid privilege status value", null);
+                return new ChangeDTO<>(State.Fail_BadData,
+                        "Invalid privilege status value. Must be: Allowed, Pending or Denied", null);
             }
 
             // Проверяем, существует ли уже привилегия
@@ -725,7 +652,7 @@ public class CollectionService {
             if (existingPrivilegeOpt.isPresent()) {
                 // Обновляем существующую привилегию
                 CollectionViewPrivilege existingPrivilege = existingPrivilegeOpt.get();
-                existingPrivilege.setStatus(status);
+                existingPrivilege.setStatus(CvpStatus.valueOf(status));
                 collectionViewPrivilegeRepository.save(existingPrivilege);
                 log.info("Updated existing privilege for user {} on collection {}", dto.getUserId(), collectionId);
             } else {
@@ -733,7 +660,7 @@ public class CollectionService {
                 CollectionViewPrivilege privilege = CollectionViewPrivilege.builder()
                         .bcolsId(collectionId)
                         .userId(dto.getUserId())
-                        .status(status)
+                        .status(CvpStatus.valueOf(status))
                         .collection(collection)
                         .build();
                 collectionViewPrivilegeRepository.save(privilege);
@@ -887,6 +814,91 @@ public class CollectionService {
         } catch (Exception e) {
             log.error("Error unliking collection: ", e);
             return new ChangeDTO<>(State.Fail, "Error unliking collection: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> checkIfLikedCollection(Integer userId, Integer collectionId) {
+        try {
+            log.debug("Checking if user {} liked collection {}", userId, collectionId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for checking like status");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Проверяем существование пользователя
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found with ID: {}", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User not found", null);
+            }
+
+            // Проверяем существование коллекции
+            Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
+            if (collectionOpt.isEmpty()) {
+                log.warn("Collection not found with ID: {}", collectionId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Collection not found", null);
+            }
+
+            // Проверяем, лайкнул ли пользователь коллекцию
+            boolean isLiked = likedCollectionRepository.existsByUserIdAndCollectionId(userId, collectionId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("collectionId", collectionId);
+            response.put("userId", userId);
+            response.put("isLiked", isLiked);
+
+            log.debug("Like check result for user {} on collection {}: {}", userId, collectionId, isLiked);
+            return new ChangeDTO<>(State.OK, "Like status retrieved successfully", response);
+
+        } catch (Exception e) {
+            log.error("Error checking like status: ", e);
+            return new ChangeDTO<>(State.Fail, "Error checking like status: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> getCollectionPrivileges(Integer userId, Integer collectionId) {
+        try {
+            log.debug("Getting privileges for collection ID: {} by user ID: {}", collectionId, userId);
+
+            // Получаем коллекцию
+            Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
+            if (collectionOpt.isEmpty()) {
+                log.warn("Collection not found with ID: {}", collectionId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Collection not found", null);
+            }
+
+            BookCollection collection = collectionOpt.get();
+
+            // Проверяем права доступа (только владелец или администратор)
+            if (!hasCollectionAccess(collection, userId)) {
+                log.warn("User {} has no access to view privileges for collection {}", userId, collectionId);
+                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            }
+
+            // Получаем все CVP для коллекции
+            List<CollectionViewPrivilege> privileges = collectionViewPrivilegeRepository
+                    .findByBcolsId(collectionId);
+
+            // Преобразуем в DTO
+            List<CollectionPrivilegeDTO> privilegeDTOs = privileges.stream()
+                    .map(this::convertToCollectionPrivilegeDTO)
+                    .collect(Collectors.toList());
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("collectionId", collectionId);
+            response.put("totalPrivileges", privilegeDTOs.size());
+            response.put("privileges", privilegeDTOs);
+
+            log.debug("Retrieved {} privileges for collection {}", privilegeDTOs.size(), collectionId);
+            return new ChangeDTO<>(State.OK, "Privileges retrieved successfully", response);
+
+        } catch (Exception e) {
+            log.error("Error retrieving collection privileges: ", e);
+            return new ChangeDTO<>(State.Fail, "Error retrieving privileges: " + e.getMessage(), null);
         }
     }
 
@@ -1123,7 +1135,270 @@ public class CollectionService {
         }
     }
 
+    // Методы для работы с вишлистами
+
+    private Optional<BookCollection> getWishlistByUserId(Integer userId) {
+        return bookCollectionRepository.findWishlistByUserId(userId);
+    }
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> checkUserWishlist(Integer userId) {
+        try {
+            log.debug("Checking wishlist for user ID: {}", userId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for wishlist check");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Проверяем существование пользователя
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found with ID: {}", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User not found", null);
+            }
+
+            // Проверяем наличие вишлиста
+            Optional<BookCollection> wishlistOpt = getWishlistByUserId(userId);
+            boolean hasWishlist = wishlistOpt.isPresent();
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("hasWishlist", hasWishlist);
+
+            if (hasWishlist) {
+                BookCollection wishlist = wishlistOpt.get();
+                response.put("wishlistId", wishlist.getBcolsId());
+                response.put("wishlistTitle", wishlist.getTitle());
+                response.put("confidentiality", wishlist.getConfidentiality());
+
+                // Получаем количество книг в вишлисте
+                Long booksCount = booksBookCollectionsRepository.countByBookCollection_BcolsId(wishlist.getBcolsId());
+                response.put("booksCount", booksCount);
+
+                // Получаем количество лайков
+                List<Object[]> likesResults = likedCollectionRepository.findPopularCollections();
+                Long likesCount = likesResults.stream()
+                        .filter(row -> wishlist.getBcolsId().equals((Integer) row[0]))
+                        .map(row -> (Long) row[1])
+                        .findFirst()
+                        .orElse(0L);
+                response.put("likesCount", likesCount);
+            }
+
+            log.debug("Wishlist check for user {}: {}", userId, hasWishlist);
+            return new ChangeDTO<>(State.OK,
+                    hasWishlist ? "User has a wishlist" : "User does not have a wishlist",
+                    response);
+
+        } catch (Exception e) {
+            log.error("Error checking wishlist for user {}: ", userId, e);
+            return new ChangeDTO<>(State.Fail, "Error checking wishlist: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional
+    public ChangeDTO<Object> addBookToWishlist(Integer userId, Integer bookId) {
+        try {
+            log.info("Adding book {} to wishlist for user {}", bookId, userId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for adding to wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Проверяем существование пользователя
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found with ID: {}", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User not found", null);
+            }
+
+            // Получаем вишлист пользователя
+            Optional<BookCollection> wishlistOpt = getWishlistByUserId(userId);
+            if (wishlistOpt.isEmpty()) {
+                log.warn("User {} does not have a wishlist", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User does not have a wishlist", null);
+            }
+
+            BookCollection wishlist = wishlistOpt.get();
+
+            // Проверяем существование книги
+            Optional<Book> bookOpt = bookRepository.findById(bookId);
+            if (bookOpt.isEmpty()) {
+                log.warn("Book not found with ID: {}", bookId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Book not found", null);
+            }
+
+            // Проверяем, не добавлена ли уже книга в вишлист
+            boolean alreadyExists = booksBookCollectionsRepository.findByBook_BookIdIn(List.of(bookId))
+                    .stream()
+                    .anyMatch(bbc -> bbc.getBookCollection().getBcolsId().equals(wishlist.getBcolsId()));
+
+            if (alreadyExists) {
+                log.warn("Book {} already exists in wishlist for user {}", bookId, userId);
+                return new ChangeDTO<>(State.Fail_Conflict, "Book already exists in wishlist", null);
+            }
+
+            // Добавляем книгу в вишлист
+            BooksBookCollections booksBookCollections = BooksBookCollections.builder()
+                    .book(bookOpt.get())
+                    .bookCollection(wishlist)
+                    .build();
+
+            booksBookCollectionsRepository.save(booksBookCollections);
+            log.info("Book {} added to wishlist for user {}", bookId, userId);
+
+            // Возвращаем информацию о добавлении
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("wishlistId", wishlist.getBcolsId());
+            response.put("bookId", bookId);
+            response.put("added", true);
+
+            return new ChangeDTO<>(State.OK, "Book added to wishlist successfully", response);
+
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation when adding book to wishlist: ", e);
+            return handleDataIntegrityViolation(e);
+        } catch (Exception e) {
+            log.error("Error adding book to wishlist: ", e);
+            return new ChangeDTO<>(State.Fail, "Error adding book to wishlist: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional
+    public ChangeDTO<Object> removeBookFromWishlist(Integer userId, Integer bookId) {
+        try {
+            log.info("Removing book {} from wishlist for user {}", bookId, userId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for removing from wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Получаем вишлист пользователя
+            Optional<BookCollection> wishlistOpt = getWishlistByUserId(userId);
+            if (wishlistOpt.isEmpty()) {
+                log.warn("User {} does not have a wishlist", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User does not have a wishlist", null);
+            }
+
+            BookCollection wishlist = wishlistOpt.get();
+
+            // Находим связь книги с вишлистом
+            List<BooksBookCollections> booksInWishlist = booksBookCollectionsRepository
+                    .findByBook_BookIdIn(List.of(bookId));
+
+            Optional<BooksBookCollections> bbcOpt = booksInWishlist.stream()
+                    .filter(bbc -> bbc.getBookCollection().getBcolsId().equals(wishlist.getBcolsId()))
+                    .findFirst();
+
+            if (bbcOpt.isEmpty()) {
+                log.warn("Book {} not found in wishlist for user {}", bookId, userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Book not found in wishlist", null);
+            }
+
+            // Удаляем связь
+            booksBookCollectionsRepository.delete(bbcOpt.get());
+            log.info("Book {} removed from wishlist for user {}", bookId, userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("wishlistId", wishlist.getBcolsId());
+            response.put("bookId", bookId);
+            response.put("removed", true);
+
+            return new ChangeDTO<>(State.OK, "Book removed from wishlist successfully", response);
+
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation when removing book from wishlist: ", e);
+            return handleDataIntegrityViolation(e);
+        } catch (Exception e) {
+            log.error("Error removing book from wishlist: ", e);
+            return new ChangeDTO<>(State.Fail, "Error removing book from wishlist: " + e.getMessage(), null);
+        }
+    }
+
+    @Transactional
+    public ChangeDTO<Object> clearWishlist(Integer userId) {
+        try {
+            log.info("Clearing wishlist for user {}", userId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for clearing wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Получаем вишлист пользователя
+            Optional<BookCollection> wishlistOpt = getWishlistByUserId(userId);
+            if (wishlistOpt.isEmpty()) {
+                log.warn("User {} does not have a wishlist", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User does not have a wishlist", null);
+            }
+
+            BookCollection wishlist = wishlistOpt.get();
+
+            // Получаем все книги в вишлисте
+            List<BooksBookCollections> booksInWishlist = booksBookCollectionsRepository
+                    .findByBookCollection_BcolsId(wishlist.getBcolsId());
+
+            // Получаем количество книг перед удалением
+            int booksCount = booksInWishlist.size();
+
+            // Удаляем все связи
+            if (!booksInWishlist.isEmpty()) {
+                booksBookCollectionsRepository.deleteAll(booksInWishlist);
+                log.info("Cleared {} books from wishlist for user {}", booksCount, userId);
+            } else {
+                log.info("Wishlist is already empty for user {}", userId);
+            }
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("wishlistId", wishlist.getBcolsId());
+            response.put("booksRemoved", booksCount);
+            response.put("cleared", true);
+
+            return new ChangeDTO<>(State.OK, "Wishlist cleared successfully", response);
+
+        } catch (DataIntegrityViolationException e) {
+            log.error("Data integrity violation when clearing wishlist: ", e);
+            return handleDataIntegrityViolation(e);
+        } catch (Exception e) {
+            log.error("Error clearing wishlist: ", e);
+            return new ChangeDTO<>(State.Fail, "Error clearing wishlist: " + e.getMessage(), null);
+        }
+    }
+
     // Вспомогательные методы
+
+    private CollectionPrivilegeDTO convertToCollectionPrivilegeDTO(CollectionViewPrivilege privilege) {
+        CollectionPrivilegeDTO dto = new CollectionPrivilegeDTO();
+        dto.setCvpId(privilege.getCvpId());
+        dto.setCollectionId(privilege.getBcolsId());
+        dto.setUserId(privilege.getUserId());
+        dto.setStatus(String.valueOf(privilege.getStatus()));
+
+        // Получаем информацию о пользователе
+        Optional<User> userOpt = userRepository.findById(privilege.getUserId());
+        if (userOpt.isPresent()) {
+            User user = userOpt.get();
+            dto.setUsername(user.getUsername());
+
+            // Получаем профиль пользователя для nickname
+            List<User> usersWithProfiles = userRepository.findByIdsWithProfiles(List.of(user.getUserId()));
+            if (!usersWithProfiles.isEmpty() && usersWithProfiles.get(0).getProfile() != null) {
+                dto.setNickname(usersWithProfiles.get(0).getProfile().getNickname());
+            }
+        }
+
+        return dto;
+    }
 
     private boolean hasCollectionAccess(BookCollection collection, Integer userId) {
         // Если userId == null, это администратор - разрешаем все
@@ -1137,15 +1412,31 @@ public class CollectionService {
 
     private Boolean checkCollectionAccess(Integer collectionId, Integer userId) {
         try {
-            // Если userId не указан, проверяем только публичные коллекции
-            if (userId == null) {
-                Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
-                return collectionOpt.isPresent() &&
-                        collectionOpt.get().getConfidentiality() == Confidentiality.Public;
+            Optional<BookCollection> collectionOpt = bookCollectionRepository.findById(collectionId);
+            if (collectionOpt.isEmpty()) {
+                return false;
             }
 
-            // Если userId указан, используем функцию CAN_VIEW_COLLECTION
+            BookCollection collection = collectionOpt.get();
+
+            // Если коллекция публичная - доступ всем
+            if ("Public".equalsIgnoreCase(String.valueOf(collection.getConfidentiality()))) {
+                return true;
+            }
+
+            // Если userId не указан, то это анонимный пользователь - доступ только к публичным
+            if (userId == null) {
+                return false;
+            }
+
+            // Если пользователь является владельцем коллекции - доступ разрешен
+            if (collection.getOwner() != null && collection.getOwner().getUserId().equals(userId)) {
+                return true;
+            }
+
+            // Проверяем наличие привилегий через функцию CAN_VIEW_COLLECTION
             return collectionAccessRepository.canViewCollection(userId, collectionId);
+
         } catch (Exception e) {
             log.error("Error checking collection access: ", e);
             return false;
@@ -1187,5 +1478,159 @@ public class CollectionService {
 
     private Page<BooksBookCollections> getBooksInCollectionPage(Integer collectionId, Pageable pageable) {
         return booksBookCollectionsRepository.findByBookCollection_BcolsId(collectionId, pageable);
+    }
+
+
+    @Transactional(readOnly = true)
+    public ChangeDTO<Object> checkBookInWishlist(Integer userId, Integer bookId) {
+        try {
+            log.debug("Checking if book {} exists in wishlist for user {}", bookId, userId);
+
+            // Проверяем, что userId не null
+            if (userId == null) {
+                log.warn("User ID is null for checking book in wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            }
+
+            // Проверяем существование пользователя
+            Optional<User> userOpt = userRepository.findById(userId);
+            if (userOpt.isEmpty()) {
+                log.warn("User not found with ID: {}", userId);
+                return new ChangeDTO<>(State.Fail_NotFound, "User not found", null);
+            }
+
+            // Проверяем существование книги
+            Optional<Book> bookOpt = bookRepository.findById(bookId);
+            if (bookOpt.isEmpty()) {
+                log.warn("Book not found with ID: {}", bookId);
+                return new ChangeDTO<>(State.Fail_NotFound, "Book not found", null);
+            }
+
+            // Получаем вишлист пользователя
+            Optional<BookCollection> wishlistOpt = getWishlistByUserId(userId);
+
+            Map<String, Object> response = new HashMap<>();
+            response.put("userId", userId);
+            response.put("bookId", bookId);
+
+            if (wishlistOpt.isEmpty()) {
+                // Если у пользователя нет вишлиста, книга точно не может быть в нем
+                response.put("hasWishlist", false);
+                response.put("existsInWishlist", false);
+                response.put("message", "User does not have a wishlist");
+
+                log.debug("User {} does not have a wishlist", userId);
+                return new ChangeDTO<>(State.OK, "User does not have a wishlist", response);
+            }
+
+            BookCollection wishlist = wishlistOpt.get();
+            response.put("hasWishlist", true);
+            response.put("wishlistId", wishlist.getBcolsId());
+            response.put("wishlistTitle", wishlist.getTitle());
+            response.put("confidentiality", wishlist.getConfidentiality());
+
+            // Проверяем, есть ли книга в вишлисте
+            List<BooksBookCollections> booksInWishlist = booksBookCollectionsRepository
+                    .findByBook_BookIdIn(List.of(bookId));
+
+            boolean exists = booksInWishlist.stream()
+                    .anyMatch(bbc -> bbc.getBookCollection().getBcolsId().equals(wishlist.getBcolsId()));
+
+            response.put("existsInWishlist", exists);
+
+            // Если книга есть в вишлисте, добавляем дополнительную информацию
+            if (exists) {
+                Optional<BooksBookCollections> bbcOpt = booksInWishlist.stream()
+                        .filter(bbc -> bbc.getBookCollection().getBcolsId().equals(wishlist.getBcolsId()))
+                        .findFirst();
+
+                if (bbcOpt.isPresent()) {
+                    BooksBookCollections bbc = bbcOpt.get();
+                    response.put("bookCollectionId", bbc.getCBookBcolId()); // ID связи
+                }
+
+                // Добавляем информацию о книге
+                Book book = bookOpt.get();
+                Map<String, Object> bookInfo = new HashMap<>();
+                bookInfo.put("title", book.getTitle());
+                bookInfo.put("subtitle", book.getSubtitle());
+                bookInfo.put("isbn", book.getIsbn());
+                bookInfo.put("pageCnt", book.getPageCnt());
+
+                // Добавляем авторов книги
+                if (book.getAuthors() != null && !book.getAuthors().isEmpty()) {
+                    List<Map<String, Object>> authorsInfo = book.getAuthors().stream()
+                            .map(author -> {
+                                Map<String, Object> authorInfo = new HashMap<>();
+                                authorInfo.put("authorId", author.getAuthorId());
+                                authorInfo.put("name", author.getName());
+                                authorInfo.put("realName", author.getRealName());
+                                return authorInfo;
+                            })
+                            .collect(Collectors.toList());
+                    bookInfo.put("authors", authorsInfo);
+                }
+
+                // Добавляем жанры книги
+                if (book.getGenres() != null && !book.getGenres().isEmpty()) {
+                    List<Map<String, Object>> genresInfo = book.getGenres().stream()
+                            .map(genre -> {
+                                Map<String, Object> genreInfo = new HashMap<>();
+                                genreInfo.put("genreId", genre.getGenreId());
+                                genreInfo.put("name", genre.getName());
+                                return genreInfo;
+                            })
+                            .collect(Collectors.toList());
+                    bookInfo.put("genres", genresInfo);
+                }
+
+                response.put("bookInfo", bookInfo);
+
+                // Добавляем обложку книги, если есть
+                if (book.getPhotoLink() != null) {
+                    ImageLink photoLink = book.getPhotoLink();
+                    Integer imageLinkId = photoLink.getImglId();
+                    List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(List.of(imageLinkId));
+                    if (!imageLinks.isEmpty()) {
+                        ImageLink fullImageLink = imageLinks.get(0);
+                        if (fullImageLink.getImageData() != null) {
+                            ImageData imageData = fullImageLink.getImageData();
+                            ImageDataDTO imageDataDTO = new ImageDataDTO(
+                                    imageData.getImgdId(),
+                                    imageData.getUuid(),
+                                    imageData.getSize(),
+                                    imageData.getMimeType(),
+                                    imageData.getExtension()
+                            );
+                            ImageLinkDTO imageLinkDTO = new ImageLinkDTO(fullImageLink.getImglId(), imageDataDTO);
+                            response.put("bookCover", imageLinkDTO);
+                        }
+                    }
+                }
+            }
+
+            // Получаем общую информацию о вишлисте
+            Long booksCount = booksBookCollectionsRepository.countByBookCollection_BcolsId(wishlist.getBcolsId());
+            response.put("wishlistBooksCount", booksCount);
+
+            // Получаем количество лайков на вишлисте
+            List<Object[]> likesResults = likedCollectionRepository.findPopularCollections();
+            Long likesCount = likesResults.stream()
+                    .filter(row -> wishlist.getBcolsId().equals((Integer) row[0]))
+                    .map(row -> (Long) row[1])
+                    .findFirst()
+                    .orElse(0L);
+            response.put("wishlistLikesCount", likesCount);
+
+            log.debug("Book {} exists in wishlist for user {}: {}", bookId, userId, exists);
+            return new ChangeDTO<>(State.OK,
+                    exists ? "Book exists in user's wishlist" : "Book does not exist in user's wishlist",
+                    response);
+
+        } catch (Exception e) {
+            log.error("Error checking if book exists in wishlist: ", e);
+            return new ChangeDTO<>(State.Fail,
+                    "Error checking if book exists in wishlist: " + e.getMessage(), null);
+        }
     }
 }

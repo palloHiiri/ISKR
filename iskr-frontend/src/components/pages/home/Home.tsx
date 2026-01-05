@@ -31,34 +31,56 @@ import { getBookImageUrl, getUserImageUrl, getCollectionImageUrl, formatRating }
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import { useDebounce } from '../../../hooks/useDebounce';
 import PrimaryButton from '../../controls/primary-button/PrimaryButton.tsx';
+import SecondaryButton from '../../controls/secondary-button/SecondaryButton.tsx';
+import profileAPI from '../../../api/profileService';
+import collectionAPI from '../../../api/collectionService';
+import wishlistService from '../../../api/wishlistService';
 
 function Home() {
   const [localSearchQuery, setLocalSearchQuery] = useState('');
   const [selectedTypes, setSelectedTypes] = useState<string[]>(['books', 'users', 'collections']);
   const [selectedGenre, setSelectedGenre] = useState('Все жанры');
-  const [isBookInWishlist, setIsBookInWishlist] = useState(false);
-  const [isCollectionFavorited, setIsCollectionFavorited] = useState(false);
+  
+  const [bookWishlistStatus, setBookWishlistStatus] = useState<Record<number, boolean>>({});
+  const [collectionLikeStatus, setCollectionLikeStatus] = useState<Record<number, boolean>>({});
   const [userFollowStates, setUserFollowStates] = useState<Record<number, boolean>>({});
+  
+  const [wishlistLoading, setWishlistLoading] = useState<Record<number, boolean>>({});
+  const [collectionLikeLoading, setCollectionLikeLoading] = useState<Record<number, boolean>>({});
+  const [followLoading, setFollowLoading] = useState<Record<number, boolean>>({});
+  
   const [showLoadMore, setShowLoadMore] = useState(false);
   
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const currentUser = useSelector((state: RootState) => state.auth.user);
   const [showLoginModal, setShowLoginModal] = useState(false);
+  const [showMessageModal, setShowMessageModal] = useState(false);
+  const [messageModalContent, setMessageModalContent] = useState({ title: '', message: '' });
   
   const popular = useSelector((state: RootState) => state.popular);
   const search = useSelector((state: RootState) => state.search);
   const dispatch = useDispatch();
   const navigate = useNavigate();
 
-  // Используем дебаунс для поискового запроса
   const debouncedSearchQuery = useDebounce(localSearchQuery, 500);
 
-  // Загружаем популярный контент и жанры при монтировании компонента
   useEffect(() => {
     dispatch(fetchAllPopular(12));
     dispatch(fetchGenres());
   }, [dispatch]);
 
-  // Обработчик изменения поискового запроса
+  useEffect(() => {
+    if (isAuthenticated) {
+      loadPopularItemsStatus();
+    }
+  }, [isAuthenticated, popular]);
+
+  useEffect(() => {
+    if (isAuthenticated && search.results) {
+      loadSearchItemsStatus();
+    }
+  }, [isAuthenticated, search.results]);
+
   useEffect(() => {
     if (debouncedSearchQuery.trim()) {
       dispatch(setQuery(debouncedSearchQuery));
@@ -69,10 +91,217 @@ function Home() {
     }
   }, [debouncedSearchQuery, dispatch]);
 
-  // Обновляем состояние кнопки "Загрузить еще"
   useEffect(() => {
     setShowLoadMore(search.hasMore && search.results.books.length + search.results.users.length + search.results.collections.length > 0);
   }, [search.hasMore, search.results]);
+
+  const showErrorMessage = (title: string, message: string) => {
+    setMessageModalContent({ title, message });
+    setShowMessageModal(true);
+  };
+
+  const loadPopularItemsStatus = async () => {
+    try {
+      for (const book of popular.books) {
+        try {
+          const isInWishlist = await wishlistService.checkBookInWishlist(book.bookId);
+          setBookWishlistStatus(prev => ({ ...prev, [book.bookId]: isInWishlist }));
+        } catch (error) {
+          console.error(`Error checking wishlist for book ${book.bookId}:`, error);
+        }
+      }
+
+      for (const collection of popular.collections) {
+        try {
+          const likeStatus = await collectionAPI.getLikeStatus(collection.collectionId);
+          setCollectionLikeStatus(prev => ({ ...prev, [collection.collectionId]: likeStatus.isLiked }));
+        } catch (error) {
+          console.error(`Error checking like status for collection ${collection.collectionId}:`, error);
+        }
+      }
+
+      for (const user of popular.users) {
+        try {
+          const isSubscribed = await profileAPI.checkSubscription(user.userId);
+          setUserFollowStates(prev => ({ ...prev, [user.userId]: isSubscribed }));
+        } catch (error) {
+          console.error(`Error checking subscription for user ${user.userId}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading popular items status:', error);
+    }
+  };
+
+  const loadSearchItemsStatus = async () => {
+    try {
+      for (const book of search.results.books) {
+        try {
+          const isInWishlist = await wishlistService.checkBookInWishlist(book.bookId);
+          setBookWishlistStatus(prev => ({ ...prev, [book.bookId]: isInWishlist }));
+        } catch (error) {
+          console.error(`Error checking wishlist for book ${book.bookId}:`, error);
+        }
+      }
+
+      for (const collection of search.results.collections) {
+        try {
+          const likeStatus = await collectionAPI.getLikeStatus(collection.collectionId);
+          setCollectionLikeStatus(prev => ({ ...prev, [collection.collectionId]: likeStatus.isLiked }));
+        } catch (error) {
+          console.error(`Error checking like status for collection ${collection.collectionId}:`, error);
+        }
+      }
+
+      for (const user of search.results.users) {
+        try {
+          const isSubscribed = await profileAPI.checkSubscription(user.userId);
+          setUserFollowStates(prev => ({ ...prev, [user.userId]: isSubscribed }));
+        } catch (error) {
+          console.error(`Error checking subscription for user ${user.userId}:`, error);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading search items status:', error);
+    }
+  };
+
+  const handleBookWishlistToggle = async (bookId: number, bookTitle: string) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    setWishlistLoading(prev => ({ ...prev, [bookId]: true }));
+
+    try {
+      const wishlistInfo = await wishlistService.checkWishlist();
+      if (!wishlistInfo.hasWishlist) {
+        showErrorMessage(
+          'Отсутствует вишлист',
+          'У вас нет вишлиста. Сначала создайте вишлист через создание коллекции в разделе "библиотека".'
+        );
+        setWishlistLoading(prev => ({ ...prev, [bookId]: false }));
+        return;
+      }
+
+      const isCurrentlyInWishlist = bookWishlistStatus[bookId];
+
+      if (isCurrentlyInWishlist) {
+        await wishlistService.removeBookFromWishlist(bookId);
+        setBookWishlistStatus(prev => ({ ...prev, [bookId]: false }));
+        console.log(`Книга "${bookTitle}" удалена из вишлиста`);
+      } else {
+        await wishlistService.addBookToWishlist(bookId);
+        setBookWishlistStatus(prev => ({ ...prev, [bookId]: true }));
+        console.log(`Книга "${bookTitle}" добавлена в вишлист`);
+      }
+    } catch (error: any) {
+      console.error('Error toggling wishlist:', error);
+      
+      if (error.response?.data?.data?.state === 'Fail_Conflict') {
+        showErrorMessage('Ошибка', 'Эта книга уже находится в вашем вишлисте.');
+      } else if (error.response?.data?.data?.state === 'Fail_NotFound') {
+        showErrorMessage('Ошибка', 'Книга не найдена.');
+      } else {
+        showErrorMessage('Ошибка', 'Ошибка при обновлении вишлиста. Попробуйте еще раз.');
+      }
+    } finally {
+      setWishlistLoading(prev => ({ ...prev, [bookId]: false }));
+    }
+  };
+
+  const handleCollectionLikeToggle = async (collectionId: number, collectionTitle: string, ownerId: number) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    // Проверка: нельзя лайкать свои собственные коллекции
+    if (currentUser?.id && ownerId === Number(currentUser.id)) {
+      showErrorMessage(
+        'Невозможно выполнить действие',
+        'Вы не можете добавлять в избранное свои собственные коллекции.'
+      );
+      return;
+    }
+
+    setCollectionLikeLoading(prev => ({ ...prev, [collectionId]: true }));
+
+    try {
+      const isCurrentlyLiked = collectionLikeStatus[collectionId];
+
+      if (isCurrentlyLiked) {
+        await collectionAPI.unlikeCollection(collectionId);
+        setCollectionLikeStatus(prev => ({ ...prev, [collectionId]: false }));
+        console.log(`Коллекция "${collectionTitle}" удалена из избранного`);
+      } else {
+        await collectionAPI.likeCollection(collectionId);
+        setCollectionLikeStatus(prev => ({ ...prev, [collectionId]: true }));
+        console.log(`Коллекция "${collectionTitle}" добавлена в избранное`);
+      }
+    } catch (error: any) {
+      console.error('Error toggling collection like:', error);
+      
+      if (error.response?.data?.data?.state === 'Fail_Conflict') {
+        showErrorMessage('Ошибка', 'Эта коллекция уже находится в вашем избранном.');
+      } else if (error.response?.data?.data?.state === 'Fail_NotFound') {
+        showErrorMessage('Ошибка', 'Коллекция не найдена.');
+      } else {
+        showErrorMessage('Ошибка', 'Ошибка при обновлении избранного. Попробуйте еще раз.');
+      }
+    } finally {
+      setCollectionLikeLoading(prev => ({ ...prev, [collectionId]: false }));
+    }
+  };
+
+  const handleUserFollowToggle = async (userId: number, userName: string) => {
+    if (!isAuthenticated) {
+      setShowLoginModal(true);
+      return;
+    }
+
+    // Проверка: нельзя подписываться на самого себя
+    if (currentUser?.id && userId === Number(currentUser.id)) {
+      showErrorMessage(
+        'Невозможно выполнить действие',
+        'Вы не можете подписаться на самого себя.'
+      );
+      return;
+    }
+
+    setFollowLoading(prev => ({ ...prev, [userId]: true }));
+
+    try {
+      const isCurrentlyFollowed = userFollowStates[userId];
+
+      if (isCurrentlyFollowed) {
+        const response = await profileAPI.unsubscribeFromUser(userId);
+        if (response.data?.state === 'OK') {
+          setUserFollowStates(prev => ({ ...prev, [userId]: false }));
+          console.log(`Отписались от пользователя "${userName}"`);
+        }
+      } else {
+        const response = await profileAPI.subscribeToUser(userId);
+        if (response.data?.state === 'OK') {
+          setUserFollowStates(prev => ({ ...prev, [userId]: true }));
+          console.log(`Подписались на пользователя "${userName}"`);
+        }
+      }
+    } catch (error: any) {
+      console.error('Error toggling follow:', error);
+      
+      if (error.response?.data?.data?.state === 'Fail_Conflict') {
+        showErrorMessage('Ошибка', 'Вы уже подписаны на этого пользователя.');
+      } else if (error.response?.data?.data?.state === 'Fail_NotFound') {
+        showErrorMessage('Ошибка', 'Пользователь не найден.');
+      } else {
+        showErrorMessage('Ошибка', 'Ошибка при обновлении подписки. Попробуйте еще раз.');
+      }
+    } finally {
+      setFollowLoading(prev => ({ ...prev, [userId]: false }));
+    }
+  };
 
   const handleTypeChange = (type: string) => {
     const newSelectedTypes = selectedTypes.includes(type)
@@ -81,7 +310,6 @@ function Home() {
     
     setSelectedTypes(newSelectedTypes);
     
-    // Преобразуем типы для API: books -> book, users -> user, collections -> collection
     const apiTypes = newSelectedTypes.map(t => {
       if (t === 'books') return 'book';
       if (t === 'users') return 'user';
@@ -91,7 +319,6 @@ function Home() {
     
     dispatch(setTypes(apiTypes));
     
-    // Если есть поисковый запрос, выполняем новый поиск
     if (search.query.trim()) {
       dispatch(resetSearch());
       dispatch(performSearch({ reset: true }));
@@ -112,7 +339,6 @@ function Home() {
       }
     }
     
-    // Если есть поисковый запрос, выполняем новый поиск
     if (search.query.trim()) {
       dispatch(resetSearch());
       dispatch(performSearch({ reset: true }));
@@ -126,7 +352,6 @@ function Home() {
     dispatch(setGenre(null));
     dispatch(setGenreName('Все жанры'));
     
-    // Если есть поисковый запрос, выполняем новый поиск
     if (search.query.trim()) {
       dispatch(resetSearch());
       dispatch(performSearch({ reset: true }));
@@ -137,7 +362,6 @@ function Home() {
     setLocalSearchQuery(value);
   };
 
-  // Преобразование данных из API в формат для компонентов - КНИГИ (популярные)
   const topBooks = popular.books.map((book: Book) => {
     let description = '';
     if (book.subtitle) {
@@ -164,26 +388,20 @@ function Home() {
     };
   });
 
-  // Преобразование данных поиска - КНИГИ
   const searchBooks = search.results.books.map((book: Book) => {
     let description = '';
     
-    // Для книг из поиска используем авторов, если они есть
     if (book.authors && book.authors.length > 0) {
       description = book.authors.join(', ');
     } 
-    // Иначе используем описание из API
     else if (book.description) {
-      // Ограничиваем длину описания
       description = book.description.length > 80 
         ? book.description.substring(0, 80) + '...' 
         : book.description;
     } 
-    // Иначе используем подзаголовок
     else if (book.subtitle) {
       description = book.subtitle;
     } 
-    // Иначе информацию о коллекциях
     else if (book.collectionsCount > 0) {
       description = `В ${book.collectionsCount} ${russianLocalWordConverter(
         book.collectionsCount,
@@ -193,7 +411,6 @@ function Home() {
         'коллекциях'
       )}`;
     } 
-    // Дефолтное описание
     else {
       description = 'Нет описания';
     }
@@ -208,7 +425,6 @@ function Home() {
     };
   });
 
-  // Преобразование данных из API в формат для компонентов - КОЛЛЕКЦИИ (популярные)
   const topCollections = popular.collections.map((collection: Collection) => {
     return {
       id: collection.collectionId,
@@ -223,14 +439,13 @@ function Home() {
       )}`,
       cover: getCollectionImageUrl(collection) || PlaceholderImage,
       originalCollection: collection,
+      ownerId: collection.ownerId,
     };
   });
 
-  // Преобразование данных поиска - КОЛЛЕКЦИИ
   const searchCollections = search.results.collections.map((collection: Collection) => {
     let description = '';
     
-    // Для коллекций из поиска используем описание или количество книг
     if (collection.description) {
       description = collection.description.length > 80 
         ? collection.description.substring(0, 80) + '...' 
@@ -258,45 +473,35 @@ function Home() {
       )}`,
       cover: getCollectionImageUrl(collection) || PlaceholderImage,
       originalCollection: collection,
+      ownerId: collection.ownerId,
     };
   });
 
-  // Преобразование данных из API в формат для компонентов - ПОЛЬЗОВАТЕЛИ (популярные)
   const topUsers = popular.users.map((user: User) => {
-    // Используем никнейм для отображения, если он есть, иначе username
     const displayName = user.nickname || user.username;
 
     return {
       id: user.userId,
       username: user.username,
       nickname: user.nickname,
-      displayName: displayName, // Добавляем поле для отображения
+      displayName: displayName,
       followers: user.subscribersCount.toString(),
       avatar: getUserImageUrl(user) || PlaceholderImage,
     };
   });
 
-  // Преобразование данных поиска - ПОЛЬЗОВАТЕЛИ
   const searchUsers = search.results.users.map((user: User) => {
-    // Используем никнейм для отображения, если он есть, иначе username
     const displayName = user.nickname || user.username;
 
     return {
       id: user.userId,
       username: user.username,
       nickname: user.nickname,
-      displayName: displayName, // Добавляем поле для отображения
+      displayName: displayName,
       followers: user.subscribersCount.toString(),
       avatar: getUserImageUrl(user) || PlaceholderImage,
     };
   });
-
-  const handleUserFollow = (userId: number) => {
-    setUserFollowStates(prev => ({
-      ...prev,
-      [userId]: !prev[userId]
-    }));
-  };
 
   const getFollowerCount = (userId: number, baseCount: string) => {
     const isFollowed = userFollowStates[userId];
@@ -352,12 +557,12 @@ function Home() {
   };
 
   const handleUserClick = (user: typeof topUsers[0]) => {
-  navigate('/profile', {
-    state: {
-      userId: user.id // Передаем userId вместо старых данных
-    }
-  });
-};
+    navigate('/profile', {
+      state: {
+        userId: user.id
+      }
+    });
+  };
 
   const handleSearchBookClick = (book: typeof searchBooks[0]) => {
     navigate('/book', {
@@ -375,12 +580,12 @@ function Home() {
   };
 
   const handleSearchUserClick = (user: typeof searchUsers[0]) => {
-  navigate('/profile', {
-    state: {
-      userId: user.id // Передаем userId вместо старых данных
-    }
-  });
-};
+    navigate('/profile', {
+      state: {
+        userId: user.id
+      }
+    });
+  };
 
   const handleSearchCollectionClick = (collection: typeof searchCollections[0]) => {
     navigate('/collection', {
@@ -430,7 +635,6 @@ function Home() {
                             search.results.users.length + 
                             search.results.collections.length;
 
-  // Подготавливаем опции жанров для SelectWithSearch
   const genreOptions = ['Все жанры', ...search.genres.map(genre => genre.name)];
 
   return (
@@ -459,7 +663,6 @@ function Home() {
             {selectedTypes.length > 0 && (
               <div className="search-results container">
                 <div className="search-results-content">
-                  {/* Индикатор загрузки поиска */}
                   {search.loading && (
                     <div className="search-loading">
                       <div className="search-spinner"></div>
@@ -477,35 +680,46 @@ function Home() {
 
                       {selectedTypes.includes('books') && search.results.books.length > 0 && (
                         <>
-                          {searchBooks.map((book) => (
-                            <div key={book.id} className="search-result-row">
-                              <div className="search-result-info" onClick={() => handleSearchBookClick(book)} style={{ cursor: 'pointer' }}>
-                                <img src={book.cover} alt="Book cover"/>
-                                <div>
-                                  <p className="search-result-title">{book.title}</p>
-                                  <p className="search-result-author">{book.description}</p>
-                                  {/* Исправляем отображение рейтинга */}
-                                  {book.rating > 0 && (
-                                    <div className="search-result-rating">
-                                      <Stars count={book.rating} size="small"/>
-                                    </div>
-                                  )}
+                          {searchBooks.map((book) => {
+                            const isInWishlist = bookWishlistStatus[book.id] || false;
+                            const isLoading = wishlistLoading[book.id] || false;
+                            
+                            return (
+                              <div key={book.id} className="search-result-row">
+                                <div className="search-result-info" onClick={() => handleSearchBookClick(book)} style={{ cursor: 'pointer' }}>
+                                  <img src={book.cover} alt="Book cover"/>
+                                  <div>
+                                    <p className="search-result-title">{book.title}</p>
+                                    <p className="search-result-author">{book.description}</p>
+                                    {book.rating > 0 && (
+                                      <div className="search-result-rating">
+                                        <Stars count={book.rating} size="small"/>
+                                      </div>
+                                    )}
+                                  </div>
+                                </div>
+                                <div className="search-result-actions">
+                                  <button
+                                    className={isInWishlist ? 'active' : ''}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleBookWishlistToggle(book.id, book.title);
+                                    }}
+                                    disabled={isLoading}
+                                  >
+                                    {isLoading ? (
+                                      <span>Загрузка...</span>
+                                    ) : (
+                                      <>
+                                        <img src={isInWishlist ? Delete : AddIcon} alt=""/>
+                                        <span>{isInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист'}</span>
+                                      </>
+                                    )}
+                                  </button>
                                 </div>
                               </div>
-                              <div className="search-result-actions">
-                                <button
-                                  className={isBookInWishlist ? 'active' : ''}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAuthenticatedAction(() => setIsBookInWishlist(!isBookInWishlist));
-                                  }}
-                                >
-                                  <img src={isBookInWishlist ? Delete : AddIcon} alt=""/>
-                                  <span>{isBookInWishlist ? 'Удалить из вишлиста' : 'Добавить в вишлист'}</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </>
                       )}
 
@@ -513,6 +727,7 @@ function Home() {
                         <>
                           {searchUsers.map((user) => {
                             const isFollowed = userFollowStates[user.id] || false;
+                            const isLoading = followLoading[user.id] || false;
                             const followerCount = isFollowed 
                               ? parseInt(user.followers.replace(/\s/g, '')) + 1 
                               : parseInt(user.followers.replace(/\s/g, ''));
@@ -523,7 +738,6 @@ function Home() {
                                 <div className="search-result-info" onClick={() => handleSearchUserClick(user)} style={{ cursor: 'pointer' }}>
                                   <img src={user.avatar} alt="User avatar"/>
                                   <div>
-                                    {/* Используем displayName (никнейм) для отображения */}
                                     <p className="search-result-title">{user.displayName}</p>
                                     <p className="search-result-author">{formattedCount} подписчиков</p>
                                   </div>
@@ -533,11 +747,18 @@ function Home() {
                                     className={isFollowed ? 'active' : ''}
                                     onClick={(e) => {
                                       e.stopPropagation();
-                                      handleAuthenticatedAction(() => handleUserFollow(user.id));
+                                      handleUserFollowToggle(user.id, user.displayName);
                                     }}
+                                    disabled={isLoading}
                                   >
-                                    <img src={isFollowed ? Delete : AddIcon} alt=""/>
-                                    <span>{isFollowed ? 'Отписаться' : 'Подписаться'}</span>
+                                    {isLoading ? (
+                                      <span>Загрузка...</span>
+                                    ) : (
+                                      <>
+                                        <img src={isFollowed ? Delete : AddIcon} alt=""/>
+                                        <span>{isFollowed ? 'Отписаться' : 'Подписаться'}</span>
+                                      </>
+                                    )}
                                   </button>
                                 </div>
                               </div>
@@ -548,30 +769,50 @@ function Home() {
 
                       {selectedTypes.includes('collections') && search.results.collections.length > 0 && (
                         <>
-                          {searchCollections.map((collection) => (
-                            <div key={collection.id} className="search-result-row">
-                              <div className="search-result-info" onClick={() => handleSearchCollectionClick(collection)} style={{ cursor: 'pointer' }}>
-                                <img src={collection.cover} alt="Collection cover"/>
-                                <div>
-                                  <p className="search-result-title">{collection.title}</p>
-                                  <p className="search-result-author">{collection.description}</p>
+                          {searchCollections.map((collection) => {
+                            const isLiked = collectionLikeStatus[collection.id] || false;
+                            const isLoading = collectionLikeLoading[collection.id] || false;
+                            const isOwnCollection = currentUser?.id && collection.ownerId === Number(currentUser.id);
+                            
+                            return (
+                              <div key={collection.id} className="search-result-row">
+                                <div className="search-result-info" onClick={() => handleSearchCollectionClick(collection)} style={{ cursor: 'pointer' }}>
+                                  <img src={collection.cover} alt="Collection cover"/>
+                                  <div>
+                                    <p className="search-result-title">{collection.title}</p>
+                                    <p className="search-result-author">{collection.description}</p>
+                                  </div>
+                                </div>
+                                <div className="search-result-actions">
+                                  <span className="books-count">{collection.booksCount}</span>
+                                  <button
+                                    className={isLiked ? 'active' : ''}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (isOwnCollection) {
+                                        showErrorMessage(
+                                          'Невозможно выполнить действие',
+                                          'Вы не можете добавлять в избранное свои собственные коллекции.'
+                                        );
+                                      } else {
+                                        handleCollectionLikeToggle(collection.id, collection.title, collection.ownerId);
+                                      }
+                                    }}
+                                    disabled={isLoading || isOwnCollection}
+                                  >
+                                    {isLoading ? (
+                                      <span>Загрузка...</span>
+                                    ) : (
+                                      <>
+                                        <img src={isLiked ? Delete : AddIcon} alt=""/>
+                                        <span>{isLiked ? 'Удалить из избранного' : 'Добавить в избранное'}</span>
+                                      </>
+                                    )}
+                                  </button>
                                 </div>
                               </div>
-                              <div className="search-result-actions">
-                                {collection.booksCount}
-                                <button
-                                  className={isCollectionFavorited ? 'active' : ''}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleAuthenticatedAction(() => setIsCollectionFavorited(!isCollectionFavorited));
-                                  }}
-                                >
-                                  <img src={isCollectionFavorited ? Delete : AddIcon} alt=""/>
-                                  <span>{isCollectionFavorited ? 'Удалить из избранного' : 'Добавить в избранное'}</span>
-                                </button>
-                              </div>
-                            </div>
-                          ))}
+                            );
+                          })}
                         </>
                       )}
 
@@ -597,7 +838,6 @@ function Home() {
         )}
       </div>
 
-      {/* Топ книг */}
       <div className="top-container">
         <h2>Топ-12 книг сайта</h2>
         {popular.loading.books ? (
@@ -606,32 +846,37 @@ function Home() {
           renderErrorState(popular.error.books)
         ) : topBooks.length > 0 ? (
           <HorizontalSlider>
-            {topBooks.map((book) => (
-              <CardElement
-                key={book.id}
-                title={book.title}
-                description={book.description}
-                starsCount={book.rating}
-                imageUrl={book.cover}
-                button={true}
-                buttonLabel={"Добавить в вишлист"}
-                onClick={() => handleBookClick(book)}
-                buttonIconUrl={AddIcon}
-                buttonChanged={true}
-                buttonChangedIconUrl={Delete}
-                buttonChangedLabel={"Удалить из вишлиста"}
-                isAuthenticated={isAuthenticated}
-                onUnauthorized={() => setShowLoginModal(true)}
-                starsSize="small"
-              />
-            ))}
+            {topBooks.map((book) => {
+              const isInWishlist = bookWishlistStatus[book.id] || false;
+              
+              return (
+                <CardElement
+                  key={book.id}
+                  title={book.title}
+                  description={book.description}
+                  starsCount={book.rating}
+                  imageUrl={book.cover}
+                  button={true}
+                  buttonLabel={"Добавить в вишлист"}
+                  onClick={() => handleBookClick(book)}
+                  buttonIconUrl={AddIcon}
+                  buttonChanged={true}
+                  buttonChangedIconUrl={Delete}
+                  buttonChangedLabel={"Удалить из вишлиста"}
+                  isAuthenticated={isAuthenticated}
+                  onUnauthorized={() => setShowLoginModal(true)}
+                  starsSize="small"
+                  onButtonClick={() => handleBookWishlistToggle(book.id, book.title)}
+                  isButtonActive={isInWishlist}
+                />
+              );
+            })}
           </HorizontalSlider>
         ) : (
           <p className="no-data-message">Пока нет данных о книгах</p>
         )}
       </div>
 
-      {/* Топ коллекций */}
       <div className="top-container">
         <h2>Топ-12 коллекций сайта</h2>
         {popular.loading.collections ? (
@@ -640,31 +885,37 @@ function Home() {
           renderErrorState(popular.error.collections)
         ) : topCollections.length > 0 ? (
           <HorizontalSlider>
-            {topCollections.map((collection) => (
-              <CardElement
-                key={collection.id}
-                title={collection.title}
-                description={collection.description}
-                infoDecoration={collection.booksCount}
-                imageUrl={collection.cover}
-                button={true}
-                onClick={handleCollectionClick(collection)}
-                buttonLabel={"Добавить в избранное"}
-                buttonIconUrl={AddIcon}
-                buttonChanged={true}
-                buttonChangedIconUrl={Delete}
-                buttonChangedLabel={"Удалить из избранного"}
-                isAuthenticated={isAuthenticated}
-                onUnauthorized={() => setShowLoginModal(true)}
-              />
-            ))}
+            {topCollections.map((collection) => {
+              const isLiked = collectionLikeStatus[collection.id] || false;
+              const isOwnCollection = currentUser?.id && collection.ownerId === Number(currentUser.id);
+              
+              return (
+                <CardElement
+                  key={collection.id}
+                  title={collection.title}
+                  description={collection.description}
+                  infoDecoration={collection.booksCount}
+                  imageUrl={collection.cover}
+                  button={!isOwnCollection}
+                  onClick={handleCollectionClick(collection)}
+                  buttonLabel={"Добавить в избранное"}
+                  buttonIconUrl={AddIcon}
+                  buttonChanged={true}
+                  buttonChangedIconUrl={Delete}
+                  buttonChangedLabel={"Удалить из избранного"}
+                  isAuthenticated={isAuthenticated}
+                  onUnauthorized={() => setShowLoginModal(true)}
+                  onButtonClick={() => handleCollectionLikeToggle(collection.id, collection.title, collection.ownerId)}
+                  isButtonActive={isLiked}
+                />
+              );
+            })}
           </HorizontalSlider>
         ) : (
           <p className="no-data-message">Пока нет данных о коллекциях</p>
         )}
       </div>
 
-      {/* Топ пользователей */}
       <div className="top-container">
         <h2>Топ-12 пользователей сайта</h2>
         {popular.loading.users ? (
@@ -673,31 +924,41 @@ function Home() {
           renderErrorState(popular.error.users)
         ) : topUsers.length > 0 ? (
           <HorizontalSlider>
-            {topUsers.map((user) => (
-              <CardElement
-                key={user.id}
-                title={user.displayName} 
-                description={`${parseInt(user.followers).toLocaleString('ru-RU')} ${russianLocalWordConverter(
-                  parseInt(user.followers),
-                  'подписчик',
-                  'подписчика',
-                  'подписчиков',
-                  'подписчиков'
-                )}`}
-                imageUrl={user.avatar}
-                button={true}
-                buttonLabel={"Подписаться"}
-                onClick={() => handleUserClick(user)}
-                buttonIconUrl={AddIcon}
-                buttonChanged={true}
-                buttonChangedIconUrl={Delete}
-                buttonChangedLabel={"Отписаться"}
-                onButtonClick={() => handleUserFollow(user.id)}
-                isButtonActive={userFollowStates[user.id] || false}
-                isAuthenticated={isAuthenticated}
-                onUnauthorized={() => setShowLoginModal(true)}
-              />
-            ))}
+            {topUsers.map((user) => {
+              const isFollowed = userFollowStates[user.id] || false;
+              const followerCount = isFollowed 
+                ? parseInt(user.followers.replace(/\s/g, '')) + 1 
+                : parseInt(user.followers.replace(/\s/g, ''));
+              const formattedCount = followerCount.toLocaleString('ru-RU').replace(/,/g, ' ');
+              const description = `${formattedCount} ${russianLocalWordConverter(
+                followerCount,
+                'подписчик',
+                'подписчика',
+                'подписчиков',
+                'подписчиков'
+              )}`;
+              const isOwnProfile = currentUser?.id && user.id === Number(currentUser.id);
+              
+              return (
+                <CardElement
+                  key={user.id}
+                  title={user.displayName}
+                  description={description}
+                  imageUrl={user.avatar}
+                  button={!isOwnProfile}
+                  buttonLabel={"Подписаться"}
+                  onClick={() => handleUserClick(user)}
+                  buttonIconUrl={AddIcon}
+                  buttonChanged={true}
+                  buttonChangedIconUrl={Delete}
+                  buttonChangedLabel={"Отписаться"}
+                  onButtonClick={() => handleUserFollowToggle(user.id, user.displayName)}
+                  isButtonActive={isFollowed}
+                  isAuthenticated={isAuthenticated}
+                  onUnauthorized={() => setShowLoginModal(true)}
+                />
+              );
+            })}
           </HorizontalSlider>
         ) : (
           <p className="no-data-message">Пока нет данных о пользователях</p>
@@ -712,6 +973,22 @@ function Home() {
           type="login"
           onSubmit={() => setShowLoginModal(false)}
         />
+      </Modal>
+
+      <Modal
+        open={showMessageModal}
+        onClose={() => setShowMessageModal(false)}
+      >
+        <div className="message-modal-content">
+          <h3>{messageModalContent.title}</h3>
+          <p>{messageModalContent.message}</p>
+          <div className="message-modal-actions">
+            <PrimaryButton
+              label="OK"
+              onClick={() => setShowMessageModal(false)}
+            />
+          </div>
+        </div>
       </Modal>
     </main>
   );

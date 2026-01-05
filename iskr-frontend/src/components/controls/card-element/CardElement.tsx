@@ -1,4 +1,3 @@
-// /src/components/controls/card-element/CardElement.tsx
 import './CardElement.scss';
 import Stars from "../../stars/Stars.tsx";
 import {useState, useEffect} from "react";
@@ -22,9 +21,9 @@ interface CardElementProps {
   onUnauthorized?: () => void;
   buttonClicked?: boolean;
   starsSize?: 'small' | 'medium' | 'large';
-  isInCollection?: boolean; // Новый пропс для статуса в коллекции
-  removeButtonLabel?: string; // Текст кнопки при удалении
-  addButtonLabel?: string; // Текст кнопки при добавлении
+  isInCollection?: boolean;
+  removeButtonLabel?: string;
+  addButtonLabel?: string;
 }
 
 function CardElement({
@@ -41,6 +40,7 @@ function CardElement({
   buttonChanged,
   buttonChangedLabel,
   buttonChangedIconUrl,
+  isButtonActive = false,
   isAuthenticated = true,
   onUnauthorized,
   buttonClicked = false,
@@ -53,27 +53,35 @@ function CardElement({
   const [buttonImg, setButtonImg] = useState(buttonIconUrl);
   const [buttonLbl, setButtonLbl] = useState(buttonLabel || (isInCollection ? removeButtonLabel : addButtonLabel));
 
-  // Обновляем состояние кнопки при изменении isInCollection
   useEffect(() => {
     if (!buttonChanged) {
-      // Если не используется buttonChanged, обновляем текст кнопки в зависимости от isInCollection
       const newLabel = isInCollection ? removeButtonLabel : addButtonLabel;
       setButtonLbl(newLabel);
       setClicked(isInCollection);
     }
   }, [isInCollection, buttonChanged, removeButtonLabel, addButtonLabel]);
 
-  // Обновляем состояние при изменении buttonClicked из пропсов
   useEffect(() => {
     setClicked(buttonClicked);
   }, [buttonClicked]);
 
-  // Обновляем состояние при изменении buttonLabel из пропсов
   useEffect(() => {
     if (buttonLabel) {
       setButtonLbl(buttonLabel);
     }
   }, [buttonLabel]);
+
+  useEffect(() => {
+    if (buttonChanged) {
+      if (buttonIconUrl && buttonChangedIconUrl) {
+        setButtonImg(isButtonActive ? buttonChangedIconUrl : buttonIconUrl);
+      }
+      if (buttonLabel && buttonChangedLabel) {
+        setButtonLbl(isButtonActive ? buttonChangedLabel : buttonLabel);
+      }
+      setClicked(isButtonActive);
+    }
+  }, [isButtonActive, buttonChanged, buttonIconUrl, buttonChangedIconUrl, buttonLabel, buttonChangedLabel]);
 
   const handleClick = (e: React.MouseEvent) => {
     e.stopPropagation();
@@ -84,12 +92,14 @@ function CardElement({
     }
 
     if (buttonChanged) {
-      // Если используется режим переключения
       setClicked(!clicked);
-      setButtonImg(buttonImg === buttonIconUrl ? buttonChangedIconUrl : buttonIconUrl);
-      setButtonLbl(buttonLbl === buttonLabel ? buttonChangedLabel : buttonLabel);
+      if (buttonIconUrl && buttonChangedIconUrl) {
+        setButtonImg(buttonImg === buttonIconUrl ? buttonChangedIconUrl : buttonIconUrl);
+      }
+      if (buttonLabel && buttonChangedLabel) {
+        setButtonLbl(buttonLbl === buttonLabel ? buttonChangedLabel : buttonLabel);
+      }
     } else {
-      // Если не используется режим переключения, просто меняем текст кнопки
       setClicked(!clicked);
       const newLabel = clicked ? addButtonLabel : removeButtonLabel;
       setButtonLbl(newLabel);

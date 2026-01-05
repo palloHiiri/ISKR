@@ -33,4 +33,18 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
     // Получение публичных коллекций
     @Query("SELECT bc FROM BookCollection bc WHERE bc.confidentiality = 'Public'")
     Page<BookCollection> findPublicCollections(Pageable pageable);
+
+    @Query("SELECT CASE WHEN COUNT(bc) > 0 THEN true ELSE false END " +
+            "FROM BookCollection bc WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
+    boolean existsWishlistByUserId(@Param("userId") Integer userId);
+
+    // Получение вишлиста пользователя
+    @Query("SELECT bc FROM BookCollection bc " +
+            "LEFT JOIN FETCH bc.photoLink " +
+            "WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
+    Optional<BookCollection> findWishlistByUserId(@Param("userId") Integer userId);
+
+    // Получение вишлистов пользователя (на случай нескольких, но не должно быть)
+    @Query("SELECT bc FROM BookCollection bc WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
+    List<BookCollection> findWishlistsByUserId(@Param("userId") Integer userId);
 }

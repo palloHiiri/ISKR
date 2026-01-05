@@ -109,20 +109,24 @@
   .search-result-info {
     display: flex;
     flex-direction: row;
-    align-items: flex-start; // Меняем с center на flex-start для лучшего выравнивания
+    align-items: flex-start;
+    flex-grow: 1;
+    cursor: pointer;
 
     img {
       height: 100px;
       width: 63px;
       margin-right: 2rem;
       flex-shrink: 0;
+      object-fit: cover;
     }
 
     > div {
       display: flex;
       flex-direction: column;
       justify-content: center;
-      min-height: 100px; // Минимальная высота для выравнивания
+      min-height: 100px;
+      flex-grow: 1;
     }
 
     .search-result-title {
@@ -130,6 +134,7 @@
       font-size: 1.25rem;
       font-weight: bold;
       margin-bottom: 0.25rem;
+      color: white;
     }
 
     .search-result-author {
@@ -138,7 +143,7 @@
     }
 
     .search-result-rating {
-      margin-top: auto; // Прижимаем рейтинг к низу контейнера
+      margin-top: auto;
       display: flex;
       align-items: center;
       
@@ -160,6 +165,13 @@
     flex-direction: row;
     align-items: center;
     gap: 1rem;
+    flex-shrink: 0;
+
+    .books-count {
+      color: rgba(255, 255, 255, 0.7);
+      font-size: 0.9rem;
+      white-space: nowrap;
+    }
 
     button {
       display: flex;
@@ -172,26 +184,38 @@
       font-weight: bolder;
       margin: 0.5rem;
       cursor: pointer;
-      padding: 0 0.5rem;
+      padding: 0.5rem 1rem;
       transition: box-shadow 0.3s ease, background-color 0.3s ease, border 0.3s ease;
+      white-space: nowrap;
+      min-width: 180px;
+      height: 40px;
 
       &.active {
         background: transparent;
         border: #E94560 1px solid;
 
         &:hover {
+          box-shadow: 0 0 10px 1px $pink;
         }
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
       }
 
       img {
         height: 16px;
         width: 16px;
-        margin: 0.5rem 0.25rem 0.5rem 0;
-
+        margin-right: 0.5rem;
       }
 
-      &:hover {
+      &:not(:disabled):hover {
         box-shadow: 0 0 10px 1px $pink;
+      }
+
+      span {
+        font-size: 0.9rem;
       }
     }
   }
@@ -213,5 +237,56 @@
   
   button {
     min-width: 200px;
+  }
+}
+
+.message-modal-content {
+  background: $blues-reversed-gradient;
+  border: 1px solid $pink;
+  border-radius: 8px;
+  padding: 2rem;
+  min-width: 400px;
+  max-width: 500px;
+  
+  h3 {
+    color: $pink;
+    font-size: 1.5rem;
+    margin-bottom: 1rem;
+    text-align: center;
+  }
+  
+  p {
+    color: rgba(255, 255, 255, 0.9);
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin-bottom: 2rem;
+    text-align: center;
+  }
+  
+  .message-modal-actions {
+    display: flex;
+    justify-content: center;
+    
+    button {
+      min-width: 120px;
+    }
+  }
+}
+
+// Обновим стили для кнопок в результатах поиска, когда они disabled
+.search-result-actions {
+  button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    
+    &:hover {
+      box-shadow: none !important;
+    }
+  }
+  
+  button.active:disabled {
+    background: transparent;
+    border: #E94560 1px solid;
+    opacity: 0.5;
   }
 }
