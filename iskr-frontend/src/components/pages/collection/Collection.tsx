@@ -20,6 +20,7 @@ import { collectionAPI, type CollectionInfo, type CollectionBook } from '../../.
 import { getImageUrl, getBookImageUrl, formatRating } from '../../../api/popularService';
 import { russianLocalWordConverter } from '../../../utils/russianLocalWordConverter.ts';
 import LockIcon from '../../../assets/elements/lock.svg';
+import { selectIsAdmin } from '../../../redux/authSlice';
 
 // Функции для перевода значений
 const translateCollectionType = (type: string): string => {
@@ -53,13 +54,14 @@ function Collection() {
   const navigate = useNavigate();
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const currentUser = useSelector((state: RootState) => state.auth.user);
-  
+  const isAdmin = useSelector(selectIsAdmin);
+
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [showDeleteBookDialog, setShowDeleteBookDialog] = useState(false);
   const [showAddBookModal, setShowAddBookModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
   const [selectedBookId, setSelectedBookId] = useState<string | null>(null);
-  
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [collectionInfo, setCollectionInfo] = useState<CollectionInfo | null>(null);
@@ -73,6 +75,9 @@ function Collection() {
 
   const collectionId = parseInt(location.state?.id || '0');
   const isOwner = collectionInfo && currentUser ? collectionInfo.ownerId === Number(currentUser.id) : false;
+
+  // Определяем, может ли пользователь редактировать коллекцию (владелец или администратор)
+  const canEditCollection = isOwner || (isAdmin && isAuthenticated);
 
   // Загрузка данных коллекции
   useEffect(() => {
@@ -88,11 +93,23 @@ function Collection() {
         setError(null);
         setIsForbidden(false);
 
-        // Используем auth методы для авторизованных пользователей
-        const [collectionData, booksData] = await Promise.all([
-          collectionAPI.getCollection(collectionId, isAuthenticated),
-          collectionAPI.getCollectionBooks(collectionId, 12, 0, isAuthenticated)
-        ]);
+        let collectionData: CollectionInfo;
+        let booksData: CollectionBooksResponse;
+
+        // Используем административные эндпоинты для администраторов
+        if (isAdmin && isAuthenticated) {
+          // Загрузка данных коллекции через административные эндпоинты
+          [collectionData, booksData] = await Promise.all([
+            collectionAPI.getCollectionAdmin(collectionId),
+            collectionAPI.getCollectionBooksAdmin(collectionId, 12, 0)
+          ]);
+        } else {
+          // Используем обычные эндпоинты для обычных пользователей
+          [collectionData, booksData] = await Promise.all([
+            collectionAPI.getCollection(collectionId, isAuthenticated),
+            collectionAPI.getCollectionBooks(collectionId, 12, 0, isAuthenticated)
+          ]);
+        }
 
         setCollectionInfo(collectionData);
         setLikesCount(collectionData.likesCount);
@@ -123,10 +140,16 @@ function Collection() {
         }
       } catch (err: any) {
         console.error('Error loading collection:', err);
-        
+
+        // Проверяем, является ли ошибка ошибкой доступа
         if (err.response && err.response.status === 403) {
-          setIsForbidden(true);
-          setError('Доступ к этой коллекции запрещен');
+          // Для администраторов не должно быть ошибок доступа
+          if (isAdmin && isAuthenticated) {
+            setError('Администраторская ошибка доступа. Убедитесь в правильности ID коллекции.');
+          } else {
+            setIsForbidden(true);
+            setError('Доступ к этой коллекции запрещен');
+          }
         } else {
           setError(err.message || 'Ошибка загрузки коллекции');
         }
@@ -136,7 +159,7 @@ function Collection() {
     };
 
     loadCollectionData();
-  }, [collectionId, isAuthenticated, currentUser]);
+  }, [collectionId, isAuthenticated, currentUser, isAdmin]);
 
   // Загрузка дополнительных книг (пагинация)
   const loadMoreBooks = async () => {
@@ -144,7 +167,14 @@ function Collection() {
 
     try {
       const nextPage = currentPage + 1;
-      const booksData = await collectionAPI.getCollectionBooks(collectionId, 12, nextPage, isAuthenticated);
+      let booksData: CollectionBooksResponse;
+
+      // Используем административные эндпоинты для администраторов
+      if (isAdmin && isAuthenticated) {
+        booksData = await collectionAPI.getCollectionBooksAdmin(collectionId, 12, nextPage);
+      } else {
+        booksData = await collectionAPI.getCollectionBooks(collectionId, 12, nextPage, isAuthenticated);
+      }
 
       const formattedBooks: BookCardData[] = booksData.books.map((book: CollectionBook) => ({
         id: book.bookId.toString(),
@@ -163,13 +193,20 @@ function Collection() {
     }
   };
 
+  // Удаление коллекции
   const handleDeleteCollection = () => {
     setShowDeleteDialog(true);
   };
 
   const confirmDeleteCollection = async () => {
     try {
-      await collectionAPI.deleteCollection(collectionId);
+      // Используем административный метод для администраторов
+      if (isAdmin && isAuthenticated) {
+        await collectionAPI.deleteCollectionAdmin(collectionId);
+      } else {
+        await collectionAPI.deleteCollection(collectionId);
+      }
+
       setShowDeleteDialog(false);
       // Перенаправляем на корень (/)
       navigate('/library');
@@ -180,6 +217,7 @@ function Collection() {
     }
   };
 
+  // Удаление книги из коллекции
   const handleDeleteBook = (bookId: string) => {
     setSelectedBookId(bookId);
     setShowDeleteBookDialog(true);
@@ -189,7 +227,13 @@ function Collection() {
     if (!selectedBookId || !collectionId) return;
 
     try {
-      await collectionAPI.removeBookFromCollection(collectionId, parseInt(selectedBookId));
+      // Используем административный метод для администраторов
+      if (isAdmin && isAuthenticated) {
+        await collectionAPI.removeBookFromCollectionAdmin(collectionId, parseInt(selectedBookId));
+      } else {
+        await collectionAPI.removeBookFromCollection(collectionId, parseInt(selectedBookId));
+      }
+
       setBooks(prev => prev.filter(book => book.id !== selectedBookId));
       setShowDeleteBookDialog(false);
       setSelectedBookId(null);
@@ -200,11 +244,20 @@ function Collection() {
     }
   };
 
+  // Обработка добавления книг в коллекцию
   const handleBooksAdded = (bookIds: number[]) => {
     // Перезагружаем список книг
     const loadBooks = async () => {
       try {
-        const booksData = await collectionAPI.getCollectionBooks(collectionId, 12, 0, isAuthenticated);
+        let booksData: CollectionBooksResponse;
+
+        // Используем соответствующие эндпоинты
+        if (isAdmin && isAuthenticated) {
+          booksData = await collectionAPI.getCollectionBooksAdmin(collectionId, 12, 0);
+        } else {
+          booksData = await collectionAPI.getCollectionBooks(collectionId, 12, 0, isAuthenticated);
+        }
+
         const formattedBooks: BookCardData[] = booksData.books.map((book: CollectionBook) => ({
           id: book.bookId.toString(),
           title: book.title,
@@ -224,6 +277,7 @@ function Collection() {
     loadBooks();
   };
 
+  // Обработка клика по книге
   const handleBookClick = (book: BookCardData) => {
     navigate('/book', {
       state: {
@@ -239,6 +293,7 @@ function Collection() {
     });
   };
 
+  // Обработка клика по владельцу
   const handleOwnerClick = () => {
     if (collectionInfo) {
       navigate('/profile', {
@@ -249,6 +304,7 @@ function Collection() {
     }
   };
 
+  // Обработка лайков
   const handleLikeToggle = async () => {
     if (!isAuthenticated || !collectionId) return;
 
@@ -268,9 +324,50 @@ function Collection() {
     }
   };
 
-  const handleCollectionUpdated = (updatedCollection: CollectionInfo) => {
-    setCollectionInfo(updatedCollection);
-    setLikesCount(updatedCollection.likesCount);
+  // Обработка обновления коллекции
+  const handleCollectionUpdated = async (updatedCollection: CollectionInfo) => {
+    try {
+      // Обновляем информацию о коллекции
+      setCollectionInfo(updatedCollection);
+      setLikesCount(updatedCollection.likesCount);
+    } catch (err: any) {
+      console.error('Error updating collection info:', err);
+      setError('Ошибка обновления информации о коллекции');
+    }
+  };
+
+  // Функция для обновления коллекции (вызывается из EditCollectionModal)
+  const handleUpdateCollection = async (data: Partial<CollectionInfo>) => {
+    if (!collectionId) return;
+
+    try {
+      let updatedCollection: CollectionInfo;
+
+      // Используем административный метод для администраторов
+      if (isAdmin && isAuthenticated) {
+        updatedCollection = await collectionAPI.updateCollectionAdmin(collectionId, {
+          title: data.title,
+          description: data.description,
+          confidentiality: data.confidentiality as 'Public' | 'Private',
+          collectionType: data.collectionType,
+          photoLink: data.photoLink?.imglId || null
+        });
+      } else {
+        updatedCollection = await collectionAPI.updateCollection(collectionId, {
+          title: data.title,
+          description: data.description,
+          confidentiality: data.confidentiality as 'Public' | 'Private',
+          collectionType: data.collectionType,
+          photoLink: data.photoLink?.imglId || null
+        });
+      }
+
+      setCollectionInfo(updatedCollection);
+      setShowEditModal(false);
+    } catch (err: any) {
+      console.error('Error updating collection:', err);
+      setError('Ошибка обновления коллекции');
+    }
   };
 
   // Функция для форматирования количества книг
@@ -294,8 +391,8 @@ function Collection() {
   const renderErrorState = () => (
     <div className="error-state">
       <p>Ошибка: {error}</p>
-      <SecondaryButton 
-        label="Вернуться назад" 
+      <SecondaryButton
+        label="Вернуться назад"
         onClick={() => navigate(-1)}
       />
     </div>
@@ -313,8 +410,8 @@ function Collection() {
       <p className="forbidden-hint">
         Если вы считаете, что это ошибка, обратитесь к владельцу коллекции.
       </p>
-      <SecondaryButton 
-        label="Вернуться назад" 
+      <SecondaryButton
+        label="Вернуться назад"
         onClick={() => navigate(-1)}
       />
     </div>
@@ -330,7 +427,7 @@ function Collection() {
     );
   }
 
-  if (isForbidden) {
+  if (isForbidden && !(isAdmin && isAuthenticated)) {
     return (
       <main>
         <div className="collection-page-container">
@@ -361,7 +458,7 @@ function Collection() {
         >
           ×
         </button>
-        
+
         <div className="collection-header">
           <div className="collection-title-section">
             <h2 className="collection-title">{collectionInfo.title}</h2>
@@ -374,18 +471,19 @@ function Collection() {
           </div>
 
           <div className="collection-actions">
-            {isOwner && isAuthenticated ? (
+            {/* Кнопки редактирования и удаления для владельца или администратора */}
+            {canEditCollection && (
               <>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={() => setShowEditModal(true)}
                   className="collection-action-btn"
                   title="Редактировать коллекцию"
                 >
                   <img src={Change} alt="Редактировать" />
                 </button>
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   onClick={handleDeleteCollection}
                   className="collection-action-btn"
                   title="Удалить коллекцию"
@@ -393,9 +491,12 @@ function Collection() {
                   <img src={Delete} alt="Удалить" />
                 </button>
               </>
-            ) : isAuthenticated && (
-              <button 
-                type="button" 
+            )}
+
+            {/* Кнопка лайка для авторизованных пользователей, которые не являются владельцами */}
+            {isAuthenticated && !isOwner && (
+              <button
+                type="button"
                 onClick={handleLikeToggle}
                 className={`collection-action-btn like-btn ${isLiked ? 'liked' : ''}`}
                 title={isLiked ? "Убрать из понравившегося" : "Добавить в понравившиеся"}
@@ -410,13 +511,13 @@ function Collection() {
         {/* Информация о коллекции */}
         <div className="collection-info-section">
           <div className="collection-cover-container">
-            <img 
-              src={collectionInfo.photoLink ? getImageUrl(collectionInfo.photoLink) : PlaceholderImage} 
-              alt="Обложка коллекции" 
+            <img
+              src={collectionInfo.photoLink ? getImageUrl(collectionInfo.photoLink) : PlaceholderImage}
+              alt="Обложка коллекции"
               className="collection-cover"
             />
           </div>
-          
+
           <div className="collection-details">
             {collectionInfo.description && (
               <div className="collection-description">
@@ -424,37 +525,46 @@ function Collection() {
                 <p>{collectionInfo.description}</p>
               </div>
             )}
-            
+
             <div className="collection-meta">
               <div className="collection-meta-item">
                 <span className="meta-label">Тип:</span>
                 <span className="meta-value">{translateCollectionType(collectionInfo.collectionType)}</span>
               </div>
-              
+
               <div className="collection-meta-item">
                 <span className="meta-label">Конфиденциальность:</span>
                 <span className="meta-value">{translateConfidentiality(collectionInfo.confidentiality)}</span>
               </div>
-              
+
               <div className="collection-meta-item">
                 <span className="meta-label">Книги:</span>
                 <span className="meta-value">{formatBooksCount(collectionInfo.booksCount)}</span>
               </div>
-              
+
               <div className="collection-meta-item">
                 <span className="meta-label">Лайки:</span>
                 <span className="meta-value">{formatLikesCount(likesCount)}</span>
               </div>
-              
+
               <div className="collection-meta-item clickable" onClick={handleOwnerClick}>
                 <span className="meta-label">Владелец:</span>
                 <span className="meta-value owner-name">{collectionInfo.ownerNickname}</span>
               </div>
+
+              {/* Бейдж администратора, если коллекция просматривается администратором */}
+              {isAdmin && isAuthenticated && !isOwner && (
+                <div className="collection-meta-item admin-view-badge">
+                  <span className="meta-label">Режим:</span>
+                  <span className="meta-value admin-badge">Администраторский просмотр</span>
+                </div>
+              )}
             </div>
           </div>
         </div>
 
-        {isOwner && isAuthenticated && (
+        {/* Кнопка добавления книг для владельца или администратора */}
+        {canEditCollection && (
           <div className="collection-buttons">
             <PrimaryButton label="Добавить книгу" onClick={() => setShowAddBookModal(true)} type="button" />
           </div>
@@ -462,13 +572,14 @@ function Collection() {
 
         <div className="collection-books-section">
           <h3 className="books-section-title">Книги в коллекции</h3>
-          
+
           {books.length > 0 ? (
             <>
               <div className="collection-books-list">
                 {books.map((book) => (
                   <div key={book.id} className="collection-book-item">
-                    {isOwner && isAuthenticated && (
+                    {/* Кнопка удаления книги для владельца или администратора */}
+                    {canEditCollection && (
                       <button
                         type="button"
                         className="delete-book-button"
@@ -493,7 +604,7 @@ function Collection() {
                   </div>
                 ))}
               </div>
-              
+
               {hasMore && (
                 <div className="load-more-container">
                   <PrimaryButton
@@ -509,6 +620,7 @@ function Collection() {
         </div>
       </div>
 
+      {/* Модальное окно подтверждения удаления коллекции */}
       <Modal open={showDeleteDialog} onClose={() => setShowDeleteDialog(false)}>
         <ConfirmDialog
           title="Удаление коллекции"
@@ -518,6 +630,7 @@ function Collection() {
         />
       </Modal>
 
+      {/* Модальное окно подтверждения удаления книги */}
       <Modal open={showDeleteBookDialog} onClose={() => setShowDeleteBookDialog(false)}>
         <ConfirmDialog
           title="Удаление книги из коллекции"
@@ -527,22 +640,26 @@ function Collection() {
         />
       </Modal>
 
+      {/* Модальное окно добавления книг */}
       {showAddBookModal && (
         <Modal open={showAddBookModal} onClose={() => setShowAddBookModal(false)}>
           <BookSearchModal
             collectionId={collectionId}
             onClose={() => setShowAddBookModal(false)}
             onBooksAdded={handleBooksAdded}
+            isAdmin={isAdmin && isAuthenticated} // Добавляем проп isAdmin
           />
         </Modal>
       )}
 
+      {/* Модальное окно редактирования коллекции */}
       {collectionInfo && (
         <EditCollectionModal
           open={showEditModal}
           onClose={() => setShowEditModal(false)}
           collection={collectionInfo}
           onCollectionUpdated={handleCollectionUpdated}
+          isAdmin={isAdmin && isAuthenticated} // Добавляем проп isAdmin
         />
       )}
     </main>

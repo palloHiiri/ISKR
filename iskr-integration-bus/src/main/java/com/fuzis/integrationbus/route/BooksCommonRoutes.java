@@ -109,6 +109,7 @@ public class BooksCommonRoutes extends RouteBuilder {
                 .setHeader("X-Headers-Required", constant("collectionId"))
                 .to("direct:check-params")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+                .setHeader("userId", simple("-1"))
                 .setHeader("X-Service", constant("Books"))
                 .setHeader("X-Service-Request", simple("api/v1/collections/${header.collectionId}"))
                 .to("direct:sd-call-finalize");
@@ -122,6 +123,7 @@ public class BooksCommonRoutes extends RouteBuilder {
                 .setHeader("X-Headers-Required", constant("collectionId"))
                 .to("direct:check-params")
                 .setHeader(Exchange.HTTP_METHOD, constant("GET"))
+                .setHeader("userId", simple("-1"))
                 .setHeader("X-Service", constant("Books"))
                 .setHeader("X-Service-Request", simple("api/v1/collections/${header.collectionId}/books"))
                 .to("direct:sd-call-finalize");

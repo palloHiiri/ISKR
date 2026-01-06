@@ -88,8 +88,14 @@ export interface LikeStatus {
   userId: number;
 }
 
+export interface BookInCollectionStatus {
+  isInCollection: boolean;
+  collectionId: number;
+  bookId: number;
+}
+
 export const collectionAPI = {
-  // Получение информации о коллекции
+  // Получение информации о коллекции (обычный пользователь)
   getCollection: async (collectionId: number, useAuth: boolean = false): Promise<CollectionInfo> => {
     try {
       const endpoint = useAuth ? '/v1/collections/auth' : '/v1/collections';
@@ -97,27 +103,51 @@ export const collectionAPI = {
         `${OAPI_BASE_URL}${endpoint}`,
         { params: { collectionId } }
       );
-      
+
       if (response.data.data.state === 'OK') {
         return response.data.data.key;
       }
-      
+
       throw new Error(response.data.data.message || 'Не удалось загрузить коллекцию');
     } catch (error: any) {
       console.error('Error fetching collection:', error);
-      
+
       if (error.response) {
         error.message = error.response.data?.data?.message || error.message;
       }
-      
+
       throw error;
     }
   },
 
-  // Получение книг коллекции (с использованием auth метода для авторизованных)
+  // Получение информации о коллекции (администратор)
+  getCollectionAdmin: async (collectionId: number): Promise<CollectionInfo> => {
+    try {
+      const response = await axios.get<ApiResponse<CollectionInfo>>(
+        `${OAPI_BASE_URL}/v1/collections/admin`,
+        { params: { collectionId } }
+      );
+
+      if (response.data.data.state === 'OK') {
+        return response.data.data.key;
+      }
+
+      throw new Error(response.data.data.message || 'Не удалось загрузить коллекцию (админ)');
+    } catch (error: any) {
+      console.error('Error fetching collection (admin):', error);
+
+      if (error.response) {
+        error.message = error.response.data?.data?.message || error.message;
+      }
+
+      throw error;
+    }
+  },
+
+  // Получение книг коллекции (обычный пользователь)
   getCollectionBooks: async (
-    collectionId: number, 
-    batch: number = 10, 
+    collectionId: number,
+    batch: number = 10,
     page: number = 0,
     useAuth: boolean = false
   ): Promise<CollectionBooksResponse> => {
@@ -129,19 +159,49 @@ export const collectionAPI = {
           params: { collectionId, batch, page }
         }
       );
-      
+
       if (response.data.data.state === 'OK') {
         return response.data.data.key;
       }
-      
+
       throw new Error(response.data.data.message || 'Не удалось загрузить книги коллекции');
     } catch (error: any) {
       console.error('Error fetching collection books:', error);
-      
+
       if (error.response) {
         error.message = error.response.data?.data?.message || error.message;
       }
-      
+
+      throw error;
+    }
+  },
+
+  // Получение книг коллекции (администратор)
+  getCollectionBooksAdmin: async (
+    collectionId: number,
+    batch: number = 10,
+    page: number = 0
+  ): Promise<CollectionBooksResponse> => {
+    try {
+      const response = await axios.get<ApiResponse<CollectionBooksResponse>>(
+        `${OAPI_BASE_URL}/v1/collections/books/admin`,
+        {
+          params: { collectionId, batch, page }
+        }
+      );
+
+      if (response.data.data.state === 'OK') {
+        return response.data.data.key;
+      }
+
+      throw new Error(response.data.data.message || 'Не удалось загрузить книги коллекции (админ)');
+    } catch (error: any) {
+      console.error('Error fetching collection books (admin):', error);
+
+      if (error.response) {
+        error.message = error.response.data?.data?.message || error.message;
+      }
+
       throw error;
     }
   },
@@ -152,11 +212,11 @@ export const collectionAPI = {
       const response = await axios.get<ApiResponse<UserCollectionsResponse>>(
         `${OAPI_BASE_URL}/v1/collection`
       );
-      
+
       if (response.data.data.state === 'OK') {
         return response.data.data.key;
       }
-      
+
       throw new Error(response.data.data.message || 'Не удалось загрузить коллекции пользователя');
     } catch (error: any) {
       console.error('Error fetching user collections:', error);
@@ -190,7 +250,7 @@ export const collectionAPI = {
       throw new Error(response.data.data.message || 'Не удалось создать коллекцию');
     } catch (error: any) {
       console.error('Error creating collection:', error);
-      
+
       if (error.response?.data?.data?.details) {
         const errorDetails = error.response.data.data.details;
         const errorMessage = errorDetails.message || 'Ошибка при создании коллекции';
@@ -203,7 +263,7 @@ export const collectionAPI = {
     }
   },
 
-  // Обновление коллекции
+  // Обновление коллекции (обычный пользователь)
   updateCollection: async (collectionId: number, data: Partial<CreateCollectionData>): Promise<CollectionInfo> => {
     try {
       const response = await axios.put<ApiResponse<CollectionInfo>>(
@@ -227,7 +287,31 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление коллекции
+  // Обновление коллекции (администратор)
+  updateCollectionAdmin: async (collectionId: number, data: Partial<CreateCollectionData>): Promise<CollectionInfo> => {
+    try {
+      const response = await axios.put<ApiResponse<CollectionInfo>>(
+        `${OAPI_BASE_URL}/v1/collection/admin?collectionId=${collectionId}`,
+        data,
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.data.state === 'OK') {
+        return response.data.data.key;
+      }
+
+      throw new Error(response.data.data.message || 'Не удалось обновить коллекцию (админ)');
+    } catch (error: any) {
+      console.error('Error updating collection (admin):', error);
+      throw error;
+    }
+  },
+
+  // Удаление коллекции (обычный пользователь)
   deleteCollection: async (collectionId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -243,7 +327,23 @@ export const collectionAPI = {
     }
   },
 
-  // Добавление книги в коллекцию
+  // Удаление коллекции (администратор)
+  deleteCollectionAdmin: async (collectionId: number): Promise<void> => {
+    try {
+      const response = await axios.delete<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/admin?collectionId=${collectionId}`
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось удалить коллекцию (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error deleting collection (admin):', error);
+      throw error;
+    }
+  },
+
+  // Добавление книги в коллекцию (обычный пользователь)
   addBookToCollection: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -265,7 +365,29 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление книги из коллекции
+  // Добавление книги в коллекцию (администратор)
+  addBookToCollectionAdmin: async (collectionId: number, bookId: number): Promise<void> => {
+    try {
+      const response = await axios.post<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/book/admin?collectionId=${collectionId}`,
+        { bookId },
+        {
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось добавить книгу в коллекцию (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error adding book to collection (admin):', error);
+      throw error;
+    }
+  },
+
+  // Удаление книги из коллекции (обычный пользователь)
   removeBookFromCollection: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -277,6 +399,49 @@ export const collectionAPI = {
       }
     } catch (error: any) {
       console.error('Error removing book from collection:', error);
+      throw error;
+    }
+  },
+
+  // Удаление книги из коллекции (администратор)
+  removeBookFromCollectionAdmin: async (collectionId: number, bookId: number): Promise<void> => {
+    try {
+      const response = await axios.delete<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/book/admin?collectionId=${collectionId}&bookId=${bookId}`
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось удалить книгу из коллекции (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error removing book from collection (admin):', error);
+      throw error;
+    }
+  },
+
+  // Проверка наличия книги в коллекции
+  checkBookInCollection: async (collectionId: number, bookId: number): Promise<BookInCollectionStatus> => {
+    try {
+      const response = await axios.get<ApiResponse<any>>(
+        `${OAPI_BASE_URL}/v1/collection/book`,
+        {
+          params: { collectionId, bookId }
+        }
+      );
+
+      if (response.data.data.state === 'OK') {
+        const key = response.data.data.key;
+        // Преобразуем ответ сервера в наш интерфейс
+        return {
+          isInCollection: key.exists || false,
+          collectionId: key.collectionId || collectionId,
+          bookId: key.bookId || bookId
+        };
+      }
+
+      throw new Error(response.data.data.message || 'Не удалось проверить наличие книги в коллекции');
+    } catch (error: any) {
+      console.error('Error checking book in collection:', error);
       throw error;
     }
   },
@@ -330,22 +495,70 @@ export const collectionAPI = {
       throw error;
     }
   },
-  checkBookInCollection: async (collectionId: number, bookId: number): Promise<BookInCollectionStatus> => {
+  checkBookInCollectionAdmin: async (collectionId: number, bookId: number): Promise<BookInCollectionStatus> => {
     try {
-      const response = await axios.get<ApiResponse<BookInCollectionStatus>>(
-        `${OAPI_BASE_URL}/v1/collection/book`,
+      const response = await axios.get<ApiResponse<any>>(
+        `${OAPI_BASE_URL}/v1/collection/book/admin`,
         {
           params: { collectionId, bookId }
         }
       );
 
       if (response.data.data.state === 'OK') {
-        return response.data.data.key;
+        const key = response.data.data.key;
+        // Преобразуем ответ сервера в наш интерфейс
+        return {
+          isInCollection: key.exists || false,
+          collectionId: key.collectionId || collectionId,
+          bookId: key.bookId || bookId
+        };
       }
 
-      throw new Error(response.data.data.message || 'Не удалось проверить наличие книги в коллекции');
+      throw new Error(response.data.data.message || 'Не удалось проверить наличие книги в коллекции (админ)');
     } catch (error: any) {
-      console.error('Error checking book in collection:', error);
+      console.error('Error checking book in collection (admin):', error);
+      throw error;
+    }
+  },
+
+  // Управление правами доступа - добавление привилегии (администратор)
+  addCollectionPrivilegeAdmin: async (collectionId: number, data: AddCVPData): Promise<void> => {
+    try {
+      const response = await axios.post<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/privilege/admin`,
+        data,
+        {
+          params: { collectionId },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось добавить привилегию (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error adding collection privilege (admin):', error);
+      throw error;
+    }
+  },
+
+  // Управление правами доступа - удаление привилегии (администратор)
+  removeCollectionPrivilegeAdmin: async (collectionId: number, userId: number): Promise<void> => {
+    try {
+      const response = await axios.delete<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/privilege/admin`,
+        {
+          params: { collectionId, userId }
+        }
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось удалить привилегию (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error removing collection privilege (admin):', error);
       throw error;
     }
   },

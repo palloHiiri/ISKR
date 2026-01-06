@@ -238,6 +238,16 @@
         }
       }
     }
+    
+    &.admin-view-badge {
+      border-color: $blue;
+      background: rgba($blue, 0.05);
+      
+      .admin-badge {
+        color: $blue;
+        font-weight: bold;
+      }
+    }
 
     .meta-label {
       font-size: 0.875rem;

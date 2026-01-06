@@ -42,4 +42,9 @@ public interface BooksBookCollectionsRepository extends JpaRepository<BooksBookC
     // Подсчет количества книг в коллекции
     @Query("SELECT COUNT(bbc) FROM BooksBookCollections bbc WHERE bbc.bookCollection.bcolsId = :collectionId")
     long countByBookCollection_BcolsId(@Param("collectionId") Integer collectionId);
+
+    // Подсчитать количество книг в коллекции
+    @Query("SELECT COUNT(bc) FROM BooksBookCollections bc WHERE bc.bookCollection.bcolsId = :bcolsId")
+    long countByBookCollectionId(@Param("bcolsId") Integer bcolsId);
+
 }

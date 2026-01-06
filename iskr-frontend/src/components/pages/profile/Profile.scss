@@ -282,13 +282,22 @@
   }
 }
 
-// Добавляем после существующих стилей
+// Контейнер для всех действий на странице профиля
+.profile-actions-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 1rem;
+  min-width: 200px;
+}
 
+// Контейнер для кнопок подписки
 .subscription-container {
   display: flex;
   flex-direction: column;
   align-items: flex-end;
   gap: 0.5rem;
+  width: 100%;
 }
 
 .subscription-error-message {
@@ -315,6 +324,39 @@
   }
 }
 
+// Контейнер для админских действий
+.admin-actions-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.admin-error-message {
+  background: rgba(255, 215, 0, 0.1);
+  border: 1px solid rgba(255, 215, 0, 0.3);
+  border-radius: 6px;
+  padding: 0.5rem 1rem;
+  color: #ffcc00;
+  font-size: 0.9rem;
+  text-align: center;
+  max-width: 200px;
+}
+
+.admin-loading {
+  padding: 0.5rem 1rem;
+  
+  .small-loading-spinner {
+    width: 20px;
+    height: 20px;
+    border: 2px solid rgba(255, 215, 0, 0.3);
+    border-top: 2px solid #ffcc00;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+  }
+}
+
 // Если нужно стилизовать кнопки при загрузке
 button:disabled {
   opacity: 0.6;
@@ -330,5 +372,136 @@ button:disabled {
   
   h2 {
     margin: 0;
+  }
+}
+
+.admin-actions-container {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.75rem; // Увеличиваем промежуток между кнопками
+  width: 100%;
+}
+
+// Стили для кнопки редактирования администратором
+.admin-edit-button {
+  background: transparent;
+  border: 1px solid $blue;
+  color: $blue;
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba($blue, 0.1);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.profile-action-buttons {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  min-width: 300px;
+  
+  @media (max-width: 768px) {
+    justify-content: flex-start;
+    margin-top: 1rem;
+  }
+}
+
+// Обертка для кнопки подписки
+.subscription-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 120px;
+  
+  .subscription-error-message {
+    background: rgba(255, 68, 68, 0.1);
+    border: 1px solid rgba(255, 68, 68, 0.3);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: #ff8888;
+    font-size: 0.8rem;
+    text-align: center;
+    max-width: 120px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .subscription-loading {
+    padding: 0.5rem 0;
+    
+    .small-loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba($pink, 0.3);
+      border-top: 2px solid $pink;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+// Обертка для кнопки бана
+.admin-ban-button-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  min-width: 130px;
+  
+  .admin-error-message {
+    background: rgba(255, 215, 0, 0.1);
+    border: 1px solid rgba(255, 215, 0, 0.3);
+    border-radius: 6px;
+    padding: 0.5rem 0.75rem;
+    color: #ffcc00;
+    font-size: 0.8rem;
+    text-align: center;
+    max-width: 130px;
+    margin-bottom: 0.5rem;
+  }
+  
+  .admin-loading {
+    padding: 0.5rem 0;
+    
+    .small-loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid rgba(255, 68, 68, 0.3);
+      border-top: 2px solid #ff4444;
+      border-radius: 50%;
+      animation: spin 1s linear infinite;
+    }
+  }
+}
+
+// Адаптивность для контейнера с заголовком и кнопками
+.container-title-with-button {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+  
+  h2 {
+    margin: 0;
+  }
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: stretch;
+    
+    .profile-action-buttons {
+      justify-content: center;
+    }
   }
 }

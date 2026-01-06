@@ -83,6 +83,7 @@ export interface UserData {
   email_verified?: boolean;
   role?: string;
   status?: string;
+  roles?: string[]; // Добавлено для хранения ролей
 }
 
 export interface ResetPasswordResponse {
@@ -117,6 +118,24 @@ export interface RedeemTokenResponse {
     processedBy: string;
     timestamp: string;
     userId: string;
+  };
+}
+
+// Типы для ролей
+export interface RoleData {
+  id: string;
+  name: string;
+  description?: string;
+  path: string;
+  subGroups: any[];
+}
+
+export interface RolesResponse {
+  data: RoleData[];
+  meta: {
+    userId: string;
+    timestamp: string;
+    processedBy: string;
   };
 }
 
@@ -181,6 +200,12 @@ export const authAPI = {
       console.error('Error getting current user:', error);
       throw error;
     }
+  },
+
+  // Новый метод для получения ролей пользователя
+  getUserRoles: async (): Promise<RolesResponse> => {
+    const response = await api.get(API_ENDPOINTS.GET_USER_ROLES);
+    return response.data;
   },
 
   resetPassword: async (login: string): Promise<ResetPasswordResponse> => {

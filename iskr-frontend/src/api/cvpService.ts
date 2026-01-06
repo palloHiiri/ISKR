@@ -41,7 +41,7 @@ export interface UserSearchResult {
 }
 
 export const cvpAPI = {
-  // Получить все CVP для коллекции
+  // Получить все CVP для коллекции (обычный пользователь)
   getCollectionPrivileges: async (collectionId: number): Promise<CVPStatus[]> => {
     try {
       const response = await axios.get<ApiResponse<PrivilegesResponse>>(
@@ -65,7 +65,31 @@ export const cvpAPI = {
     }
   },
 
-  // Добавить CVP
+  // Получить все CVP для коллекции (администратор)
+  getCollectionPrivilegesAdmin: async (collectionId: number): Promise<CVPStatus[]> => {
+    try {
+      const response = await axios.get<ApiResponse<PrivilegesResponse>>(
+        `${OAPI_BASE_URL}/v1/collection/privilege/admin`,
+        { params: { collectionId } }
+      );
+      
+      if (response.data.data.state === 'OK') {
+        return response.data.data.key?.privileges || [];
+      }
+      
+      throw new Error(response.data.data.message || 'Не удалось загрузить привилегии доступа (админ)');
+    } catch (error: any) {
+      console.error('Error fetching collection privileges (admin):', error);
+      
+      if (error.response?.status === 404) {
+        return [];
+      }
+      
+      return [];
+    }
+  },
+
+  // Добавить CVP (обычный пользователь)
   addCollectionPrivilege: async (collectionId: number, data: AddCVPData): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -88,7 +112,30 @@ export const cvpAPI = {
     }
   },
 
-  // Удалить CVP
+  // Добавить CVP (администратор)
+  addCollectionPrivilegeAdmin: async (collectionId: number, data: AddCVPData): Promise<void> => {
+    try {
+      const response = await axios.post<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/privilege/admin`,
+        data,
+        {
+          params: { collectionId },
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        }
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось добавить привилегию доступа (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error adding collection privilege (admin):', error);
+      throw error;
+    }
+  },
+
+  // Удалить CVP (обычный пользователь)
   removeCollectionPrivilege: async (collectionId: number, userId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -103,6 +150,25 @@ export const cvpAPI = {
       }
     } catch (error: any) {
       console.error('Error removing collection privilege:', error);
+      throw error;
+    }
+  },
+
+  // Удалить CVP (администратор)
+  removeCollectionPrivilegeAdmin: async (collectionId: number, userId: number): Promise<void> => {
+    try {
+      const response = await axios.delete<ApiResponse<void>>(
+        `${OAPI_BASE_URL}/v1/collection/privilege/admin`,
+        {
+          params: { collectionId, userId }
+        }
+      );
+
+      if (response.data.data.state !== 'OK') {
+        throw new Error(response.data.data.message || 'Не удалось удалить привилегию доступа (админ)');
+      }
+    } catch (error: any) {
+      console.error('Error removing collection privilege (admin):', error);
       throw error;
     }
   },

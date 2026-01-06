@@ -1,5 +1,5 @@
 // /src/components/controls/book-search-modal/BookSearchModal.tsx
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import './BookSearchModal.scss';
 import PrimaryButton from '../primary-button/PrimaryButton';
 import SecondaryButton from '../secondary-button/SecondaryButton';
@@ -15,14 +15,14 @@ interface BookSearchModalProps {
   collectionId: number;
   onClose: () => void;
   onBooksAdded?: (bookIds: number[]) => void;
+  isAdmin?: boolean;
 }
 
-function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModalProps) {
+function BookSearchModal({ collectionId, onClose, onBooksAdded, isAdmin = false }: BookSearchModalProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [selectedBooks, setSelectedBooks] = useState<Set<number>>(new Set());
   const [processingBooks, setProcessingBooks] = useState<Set<number>>(new Set());
   const [bookInCollectionStatus, setBookInCollectionStatus] = useState<Record<number, boolean>>({});
 
@@ -52,8 +52,14 @@ function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModa
         const statusMap: Record<number, boolean> = {};
         const promises = response.books.map(async (book: any) => {
           try {
-            const status = await collectionAPI.checkBookInCollection(collectionId, book.bookId);
-            statusMap[book.bookId] = status.exists;
+            // Используем административный метод для администраторов
+            let status: BookInCollectionStatus;
+            if (isAdmin) {
+              status = await collectionAPI.checkBookInCollectionAdmin(collectionId, book.bookId);
+            } else {
+              status = await collectionAPI.checkBookInCollection(collectionId, book.bookId);
+            }
+            statusMap[book.bookId] = status.isInCollection;
           } catch (err) {
             statusMap[book.bookId] = false;
           }
@@ -70,7 +76,7 @@ function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModa
     };
 
     searchBooks();
-  }, [debouncedSearchQuery, collectionId]);
+  }, [debouncedSearchQuery, collectionId, isAdmin]);
 
   // Обработка добавления/удаления книги из коллекции
   const handleBookToggle = async (bookId: number) => {
@@ -80,17 +86,32 @@ function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModa
       const isInCollection = bookInCollectionStatus[bookId];
 
       if (isInCollection) {
-        await collectionAPI.removeBookFromCollection(collectionId, bookId);
+        // Используем административный метод для администраторов
+        if (isAdmin) {
+          await collectionAPI.removeBookFromCollectionAdmin(collectionId, bookId);
+        } else {
+          await collectionAPI.removeBookFromCollection(collectionId, bookId);
+        }
         setBookInCollectionStatus(prev => ({
           ...prev,
           [bookId]: false
         }));
       } else {
-        await collectionAPI.addBookToCollection(collectionId, bookId);
+        // Используем административный метод для администраторов
+        if (isAdmin) {
+          await collectionAPI.addBookToCollectionAdmin(collectionId, bookId);
+        } else {
+          await collectionAPI.addBookToCollection(collectionId, bookId);
+        }
         setBookInCollectionStatus(prev => ({
           ...prev,
           [bookId]: true
         }));
+        
+        // Вызываем callback с добавленной книгой
+        if (onBooksAdded) {
+          onBooksAdded([bookId]);
+        }
       }
     } catch (err: any) {
       console.error('Error toggling book in collection:', err);
@@ -116,7 +137,7 @@ function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModa
 
   const getAuthorsString = (book: any): string => {
     if (book.authors && Array.isArray(book.authors)) {
-      return book.authors.join(', ');
+      return book.authors.map((author: any) => author.name || author).join(', ');
     }
     if (book.author) {
       return book.author;
@@ -197,11 +218,11 @@ function BookSearchModal({ collectionId, onClose, onBooksAdded }: BookSearchModa
           )}
         </div>
 
-          <div className="modal-actions">
-            <SecondaryButton
-              label="Готово"
-              onClick={onClose}
-            />
+        <div className="modal-actions">
+          <SecondaryButton
+            label="Готово"
+            onClick={onClose}
+          />
         </div>
       </div>
     </div>

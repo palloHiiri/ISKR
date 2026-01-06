@@ -1,0 +1,143 @@
+@use '../../../_index.scss' as *;
+
+.admin-change-description-modal {
+  background: #1a1a1a;
+  border-radius: 12px;
+  padding: 2rem;
+  max-width: 600px;
+  width: 100%;
+  border: 2px solid $blue;
+
+  .admin-modal-title {
+    color: #FFFFFF;
+    font-size: 1.8rem;
+    margin-bottom: 1.5rem;
+    text-align: center;
+    font-weight: bold;
+  }
+}
+
+.admin-current-info {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  
+  .admin-info-label {
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+  }
+  
+  .admin-info-value {
+    color: #FFFFFF;
+    font-size: 1rem;
+    font-weight: 500;
+    word-break: break-all;
+  }
+}
+
+.admin-input-group {
+  margin-bottom: 1.5rem;
+
+  .admin-input-label {
+    display: block;
+    color: rgba(255, 255, 255, 0.8);
+    font-size: 0.95rem;
+    margin-bottom: 0.5rem;
+  }
+
+  .admin-description-input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    border-radius: 8px;
+    color: #FFFFFF;
+    font-size: 1rem;
+    transition: all 0.2s ease;
+    resize: vertical;
+    min-height: 120px;
+    font-family: inherit;
+
+    &:focus {
+      outline: none;
+      border-color: $blue;
+      background: rgba(255, 255, 255, 0.15);
+    }
+
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    &::placeholder {
+      color: rgba(255, 255, 255, 0.4);
+    }
+  }
+
+  .admin-character-counter {
+    text-align: right;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: 0.9rem;
+    margin-top: 0.5rem;
+  }
+}
+
+.admin-error-message {
+  background: rgba(255, 68, 68, 0.1);
+  border: 1px solid rgba(255, 68, 68, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  .admin-error-icon {
+    color: #ff4444;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  span {
+    color: #ff8888;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+}
+
+.admin-success-message {
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: 8px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 1.5rem;
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+
+  .admin-success-icon {
+    color: #4CAF50;
+    font-size: 1rem;
+    flex-shrink: 0;
+  }
+
+  span {
+    color: #8BC34A;
+    font-size: 0.95rem;
+    line-height: 1.4;
+  }
+}
+
+.admin-modal-actions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+
+  button {
+    min-width: 120px;
+  }
+}

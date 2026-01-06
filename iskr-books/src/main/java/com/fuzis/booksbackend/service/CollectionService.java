@@ -112,7 +112,9 @@ public class CollectionService {
             dto.setOwnerNickname(ownerNickname);
             dto.setBooksCount(booksCount);
             dto.setLikesCount(likesCount);
-            dto.setCanView(true); // Если дошли сюда, значит доступ есть
+
+            // Доступ уже проверен, поэтому устанавливаем true
+            dto.setCanView(true);
 
             log.debug("Collection details retrieved for ID: {}", collectionId);
             return new ChangeDTO<>(State.OK, "Collection details retrieved successfully", dto);
@@ -284,8 +286,8 @@ public class CollectionService {
             log.info("Creating collection by user ID: {}", userId);
 
             // Проверяем, что userId не null (только зарегистрированные пользователи могут создавать коллекции)
-            if (userId == null) {
-                log.warn("User ID is null for collection creation");
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for collection creation");
                 return new ChangeDTO<>(State.Fail_Forbidden, "Only registered users can create collections", null);
             }
 
@@ -385,10 +387,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to update collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to update collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к изменению
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot update collection");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Обновляем поля, если они предоставлены и не пустые
@@ -424,11 +436,15 @@ public class CollectionService {
                 if ("Wishlist".equalsIgnoreCase(dto.getCollectionType()) &&
                         !"Wishlist".equalsIgnoreCase(String.valueOf(collection.getCollectionType()))) {
 
-                    boolean hasWishlist = bookCollectionRepository.existsWishlistByUserId(userId);
-                    if (hasWishlist) {
-                        log.warn("User {} already has a wishlist, cannot convert collection to wishlist", userId);
-                        return new ChangeDTO<>(State.Fail_Conflict,
-                                "User can only have one wishlist", null);
+                    // Для администратора userId == null, нужно получить настоящего владельца
+                    Integer ownerId = collection.getOwner() != null ? collection.getOwner().getUserId() : null;
+                    if (ownerId != null) {
+                        boolean hasWishlist = bookCollectionRepository.existsWishlistByUserId(ownerId);
+                        if (hasWishlist) {
+                            log.warn("User {} already has a wishlist, cannot convert collection to wishlist", ownerId);
+                            return new ChangeDTO<>(State.Fail_Conflict,
+                                    "User can only have one wishlist", null);
+                        }
                     }
                 }
 
@@ -450,7 +466,7 @@ public class CollectionService {
             BookCollection updatedCollection = bookCollectionRepository.save(collection);
             log.info("Collection updated with ID: {}", collectionId);
 
-            // Возвращаем обновленные детали коллекции
+            // Для админа передаем null в getCollectionDetail
             return getCollectionDetail(collectionId, userId);
 
         } catch (DataIntegrityViolationException e) {
@@ -476,10 +492,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to delete collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to delete collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к удалению
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot delete collection");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Удаляем коллекцию
@@ -511,10 +537,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to modify collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to modify collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к добавлению книг
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot add books to collection");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Проверяем существование книги
@@ -568,10 +604,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to modify collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to modify collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к удалению книг
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot remove books from collection");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Находим связь книги с коллекцией
@@ -616,10 +662,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to modify privileges for collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to modify privileges for collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к управлению привилегиями
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot manage collection privileges");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Проверяем существование пользователя, которому даем привилегию
@@ -630,7 +686,7 @@ public class CollectionService {
             }
 
             // Проверяем, не является ли целевой пользователь владельцем
-            if (collection.getOwner().getUserId().equals(dto.getUserId())) {
+            if (collection.getOwner() != null && collection.getOwner().getUserId().equals(dto.getUserId())) {
                 log.warn("Cannot set privilege for collection owner");
                 return new ChangeDTO<>(State.Fail_Conflict, "Cannot set privilege for collection owner", null);
             }
@@ -638,11 +694,10 @@ public class CollectionService {
             // Валидация статуса
             String status = dto.getCvpStatus();
             if (!"Allowed".equalsIgnoreCase(status) &&
-                    !"Pending".equalsIgnoreCase(status) &&
-                    !"Denied".equalsIgnoreCase(status)) {
+                    !"Disallowed".equalsIgnoreCase(status)) {
                 log.warn("Invalid CVP status value: {}", dto.getCvpStatus());
                 return new ChangeDTO<>(State.Fail_BadData,
-                        "Invalid privilege status value. Must be: Allowed, Pending or Denied", null);
+                        "Invalid privilege status value. Must be: Allowed, Disallowed", null);
             }
 
             // Проверяем, существует ли уже привилегия
@@ -693,10 +748,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to modify privileges for collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            // Для администратора userId == null разрешаем все операции
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to modify privileges for collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен иметь доступа к управлению привилегиями
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot manage collection privileges");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Проверяем существование привилегии
@@ -728,9 +793,9 @@ public class CollectionService {
         try {
             log.info("User {} liking collection {}", userId, collectionId);
 
-            // Проверяем, что userId не null (только зарегистрированные пользователи могут лайкать)
-            if (userId == null) {
-                log.warn("User ID is null for like operation");
+            // Проверяем, что userId не null и не -1 (только зарегистрированные пользователи могут лайкать)
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for like operation");
                 return new ChangeDTO<>(State.Fail_Forbidden, "Only registered users can like collections", null);
             }
 
@@ -787,9 +852,9 @@ public class CollectionService {
         try {
             log.info("User {} unliking collection {}", userId, collectionId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for unlike operation");
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for unlike operation");
                 return new ChangeDTO<>(State.Fail_Forbidden, "Only registered users can unlike collections", null);
             }
 
@@ -822,10 +887,10 @@ public class CollectionService {
         try {
             log.debug("Checking if user {} liked collection {}", userId, collectionId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for checking like status");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for checking like status");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Проверяем существование пользователя
@@ -873,10 +938,19 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Проверяем права доступа (только владелец или администратор)
-            if (!hasCollectionAccess(collection, userId)) {
-                log.warn("User {} has no access to view privileges for collection {}", userId, collectionId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+            // Проверяем права доступа (админ имеет полный доступ, userId может быть null)
+            if (userId != null && userId != -1) {
+                // Для не-админа проверяем, является ли пользователь владельцем
+                if (collection.getOwner() == null || !collection.getOwner().getUserId().equals(userId)) {
+                    log.warn("User {} has no access to view privileges for collection {}", userId, collectionId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Invalid user", null);
+                }
+            }
+            // Если userId == null (админ) или userId == -1 (неавторизованный), пропускаем проверку
+            // Но неавторизованный не должен видеть привилегии
+            if (userId != null && userId == -1) {
+                log.warn("Unauthorized user cannot view collection privileges");
+                return new ChangeDTO<>(State.Fail_Forbidden, "Unauthorized access", null);
             }
 
             // Получаем все CVP для коллекции
@@ -907,9 +981,9 @@ public class CollectionService {
         try {
             log.debug("Getting collections for user ID: {}, page: {}, batch: {}", userId, page, batch);
 
-            // Проверяем, что userId не null (только зарегистрированные пользователи имеют коллекции)
-            if (userId == null) {
-                log.warn("User ID is null for getting collections");
+            // Проверяем, что userId не null и не -1 (только зарегистрированные пользователи имеют коллекции)
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for getting collections");
                 return new ChangeDTO<>(State.Fail_Forbidden,
                         "Only registered users can view their collections", null);
             }
@@ -1061,11 +1135,13 @@ public class CollectionService {
         try {
             log.debug("Checking if book {} exists in collection {} for user {}", bookId, collectionId, userId);
 
-            // Проверяем доступ к коллекции
-            Boolean canView = checkCollectionAccess(collectionId, userId);
-            if (Boolean.FALSE.equals(canView)) {
-                log.warn("Access denied to collection {} for user {}", collectionId, userId);
-                return new ChangeDTO<>(State.Fail_Forbidden, "Access to collection denied", null);
+            // Проверяем доступ к коллекции (для администратора userId = null пропускаем проверку)
+            if (userId != null && userId != -1) {
+                Boolean canView = checkCollectionAccess(collectionId, userId);
+                if (Boolean.FALSE.equals(canView)) {
+                    log.warn("Access denied to collection {} for user {}", collectionId, userId);
+                    return new ChangeDTO<>(State.Fail_Forbidden, "Access to collection denied", null);
+                }
             }
 
             // Проверяем существование коллекции
@@ -1146,10 +1222,10 @@ public class CollectionService {
         try {
             log.debug("Checking wishlist for user ID: {}", userId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for wishlist check");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for wishlist check");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Проверяем существование пользователя
@@ -1203,10 +1279,10 @@ public class CollectionService {
         try {
             log.info("Adding book {} to wishlist for user {}", bookId, userId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for adding to wishlist");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for adding to wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Проверяем существование пользователя
@@ -1274,10 +1350,10 @@ public class CollectionService {
         try {
             log.info("Removing book {} from wishlist for user {}", bookId, userId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for removing from wishlist");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for removing from wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Получаем вишлист пользователя
@@ -1328,10 +1404,10 @@ public class CollectionService {
         try {
             log.info("Clearing wishlist for user {}", userId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for clearing wishlist");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for clearing wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Получаем вишлист пользователя
@@ -1405,6 +1481,10 @@ public class CollectionService {
         if (userId == null) {
             return true;
         }
+        // Если userId == -1, это неавторизованный пользователь - нет доступа
+        if (userId != null && userId == -1) {
+            return false;
+        }
         // Проверяем, что пользователь является владельцем коллекции
         return collection.getOwner() != null &&
                 collection.getOwner().getUserId().equals(userId);
@@ -1419,14 +1499,20 @@ public class CollectionService {
 
             BookCollection collection = collectionOpt.get();
 
-            // Если коллекция публичная - доступ всем
-            if ("Public".equalsIgnoreCase(String.valueOf(collection.getConfidentiality()))) {
+            // Если userId == null (администратор), то доступ всегда разрешен
+            if (userId == null) {
                 return true;
             }
 
-            // Если userId не указан, то это анонимный пользователь - доступ только к публичным
-            if (userId == null) {
-                return false;
+            // Если userId == -1 (неавторизованный пользователь)
+            if (userId != null && userId == -1) {
+                // Проверяем, публичная ли коллекция
+                return "Public".equalsIgnoreCase(String.valueOf(collection.getConfidentiality()));
+            }
+
+            // Если коллекция публичная - доступ всем
+            if ("Public".equalsIgnoreCase(String.valueOf(collection.getConfidentiality()))) {
+                return true;
             }
 
             // Если пользователь является владельцем коллекции - доступ разрешен
@@ -1480,16 +1566,15 @@ public class CollectionService {
         return booksBookCollectionsRepository.findByBookCollection_BcolsId(collectionId, pageable);
     }
 
-
     @Transactional(readOnly = true)
     public ChangeDTO<Object> checkBookInWishlist(Integer userId, Integer bookId) {
         try {
             log.debug("Checking if book {} exists in wishlist for user {}", bookId, userId);
 
-            // Проверяем, что userId не null
-            if (userId == null) {
-                log.warn("User ID is null for checking book in wishlist");
-                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required", null);
+            // Проверяем, что userId не null и не -1
+            if (userId == null || userId == -1) {
+                log.warn("User ID is null or -1 for checking book in wishlist");
+                return new ChangeDTO<>(State.Fail_Forbidden, "User ID is required and must be registered", null);
             }
 
             // Проверяем существование пользователя

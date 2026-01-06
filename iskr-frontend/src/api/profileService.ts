@@ -325,6 +325,204 @@ checkSubscription: async (userOnId: number): Promise<boolean> => {
     return false;
   }
 },
+
+// === НОВЫЕ МЕТОДЫ ДЛЯ АДМИНИСТРАТОРА ===
+
+// Заблокировать пользователя
+banUser: async (userId: number): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+
+    const response = await api.post('/v1/accounts/admin/ban', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error banning user:', error);
+    
+    // Более информативное сообщение об ошибке
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при блокировке пользователя';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Разблокировать пользователя
+unbanUser: async (userId: number): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+
+    const response = await api.post('/v1/accounts/admin/unban', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error unbanning user:', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при разблокировке пользователя';
+    
+    throw new Error(errorMessage);
+  }
+},
+changeUsernameAdmin: async (userId: number, newUsername: string): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+    params.append('New-Username', newUsername);
+
+    const response = await api.put('/v1/accounts/admin/username', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing username (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении имени пользователя';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Изменить описание профиля (админ)
+changeProfileDescriptionAdmin: async (userId: number, description: string): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+    params.append('New-Description', description);
+
+    const response = await api.put('/v1/accounts/admin/description', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing profile description (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении описания профиля';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Изменить никнейм (админ)
+changeNicknameAdmin: async (userId: number, nickname: string): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+    params.append('New-Nickname', nickname);
+
+    const response = await api.put('/v1/accounts/admin/nickname', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing nickname (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении никнейма';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Изменить email (админ)
+changeEmailAdmin: async (userId: number, email: string): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+    params.append('New-Email', email);
+
+    const response = await api.put('/v1/accounts/admin/email', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing email (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении email';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Изменить пароль (админ)
+changePasswordAdmin: async (userId: number, newPassword: string): Promise<any> => {
+  try {
+    const params = new URLSearchParams();
+    params.append('X-User-Change-ID', userId.toString());
+    params.append('New-Password', newPassword);
+
+    const response = await api.put('/v1/accounts/admin/password', params, {
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+    });
+    
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing password (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении пароля';
+    
+    throw new Error(errorMessage);
+  }
+},
+
+// Изменить фото профиля (админ)
+changeProfileImageAdmin: async (userId: number, imageId: number): Promise<any> => {
+  try {
+    const response = await api.put(`/v1/accounts/admin/image?X-User-Change-ID=${userId}&New-Image-ID=${imageId}`);
+    return response.data;
+  } catch (error: any) {
+    console.error('Error changing profile image (admin):', error);
+    
+    const errorMessage = error.response?.data?.data?.message ||
+      error.response?.data?.message ||
+      error.message ||
+      'Ошибка при изменении фото профиля';
+    
+    throw new Error(errorMessage);
+  }
+},
 };
 
 export default profileAPI;

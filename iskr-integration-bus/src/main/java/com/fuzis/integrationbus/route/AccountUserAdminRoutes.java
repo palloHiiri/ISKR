@@ -240,7 +240,7 @@ public class AccountUserAdminRoutes extends RouteBuilder {
                 .to("direct:auth")
                 .setHeader(Exchange.HTTP_METHOD, constant("PUT"))
                 .setHeader("X-Service", constant("Accounts"))
-                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/username"))
+                .setHeader("X-Service-Request", simple("api/v1/accounts/user/${header.X-User-Change-ID}/image"))
                 .setHeader(Exchange.CONTENT_TYPE, constant("application/x-www-form-urlencoded"))
                 .setBody(simple("imglId=${header.New-Image-Id}"))
                 .to("direct:sd-call-finalize");

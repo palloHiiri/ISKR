@@ -47,4 +47,6 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
     // Получение вишлистов пользователя (на случай нескольких, но не должно быть)
     @Query("SELECT bc FROM BookCollection bc WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
     List<BookCollection> findWishlistsByUserId(@Param("userId") Integer userId);
+
+    boolean existsById(Integer collectionId);
 }

@@ -7,7 +7,7 @@
   "defaultSignatureAlgorithm": "RS256",
   "revokeRefreshToken": false,
   "refreshTokenMaxReuse": 0,
-  "accessTokenLifespan": 1800,
+  "accessTokenLifespan": 86400,
   "accessTokenLifespanForImplicitFlow": 900,
   "ssoSessionIdleTimeout": 259200,
   "ssoSessionMaxLifespan": 604800,
@@ -36,7 +36,7 @@
   "loginWithEmailAllowed": true,
   "duplicateEmailsAllowed": false,
   "resetPasswordAllowed": false,
-  "editUsernameAllowed": false,
+  "editUsernameAllowed": true,
   "bruteForceProtected": false,
   "permanentLockout": false,
   "maxTemporaryLockouts": 0,
@@ -318,6 +318,15 @@
       ],
       "integration-bus": [
         {
+          "id": "8a3b7432-4585-49fe-8be6-30f31f7a2868",
+          "name": "manage-accounts",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "9ecea4cc-d21b-40d3-bcf1-b68648bc68c5",
+          "attributes": {}
+        },
+        {
           "id": "6545ce3c-cf23-4d52-91f7-8524ad0e5a7c",
           "name": "profile-watch",
           "description": "",
@@ -329,6 +338,15 @@
         {
           "id": "dc0b097b-4cc8-47c7-8790-a9d04dd1d948",
           "name": "profile-change",
+          "description": "",
+          "composite": false,
+          "clientRole": true,
+          "containerId": "9ecea4cc-d21b-40d3-bcf1-b68648bc68c5",
+          "attributes": {}
+        },
+        {
+          "id": "0ec5f3e9-4e6c-4d05-aa35-2433099b47d6",
+          "name": "manage-books",
           "description": "",
           "composite": false,
           "clientRole": true,
@@ -427,6 +445,23 @@
     }
   },
   "groups": [
+    {
+      "id": "7493376e-620d-47ea-88a2-7a98707d9e4c",
+      "name": "admin",
+      "description": "",
+      "path": "/admin",
+      "subGroups": [],
+      "attributes": {},
+      "realmRoles": [],
+      "clientRoles": {
+        "integration-bus": [
+          "manage-accounts",
+          "profile-watch",
+          "profile-change",
+          "manage-books"
+        ]
+      }
+    },
     {
       "id": "70bb5af6-c50d-47bf-b105-6dada748f11d",
       "name": "user",
@@ -1666,14 +1701,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-attribute-mapper",
-            "oidc-full-name-mapper",
             "oidc-sha256-pairwise-sub-mapper",
+            "oidc-usermodel-property-mapper",
             "saml-role-list-mapper",
-            "oidc-address-mapper",
             "saml-user-attribute-mapper",
-            "saml-user-property-mapper",
-            "oidc-usermodel-property-mapper"
+            "oidc-full-name-mapper",
+            "oidc-usermodel-attribute-mapper",
+            "oidc-address-mapper",
+            "saml-user-property-mapper"
           ]
         }
       },
@@ -1685,14 +1720,14 @@
         "subComponents": {},
         "config": {
           "allowed-protocol-mapper-types": [
-            "oidc-usermodel-attribute-mapper",
             "saml-user-property-mapper",
-            "oidc-address-mapper",
-            "oidc-usermodel-property-mapper",
-            "oidc-full-name-mapper",
             "saml-role-list-mapper",
-            "saml-user-attribute-mapper",
-            "oidc-sha256-pairwise-sub-mapper"
+            "oidc-sha256-pairwise-sub-mapper",
+            "oidc-full-name-mapper",
+            "oidc-address-mapper",
+            "oidc-usermodel-attribute-mapper",
+            "oidc-usermodel-property-mapper",
+            "saml-user-attribute-mapper"
           ]
         }
       },
@@ -2606,7 +2641,7 @@
     "shortVerificationUri": "",
     "actionTokenGeneratedByUserLifespan.reset-credentials": ""
   },
-  "keycloakVersion": "26.4.5",
+  "keycloakVersion": "26.4.7",
   "userManagedAccessAllowed": false,
   "organizationsEnabled": false,
   "verifiableCredentialsEnabled": false,

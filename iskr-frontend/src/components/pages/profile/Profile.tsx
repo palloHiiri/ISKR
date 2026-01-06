@@ -1,29 +1,31 @@
 import PrimaryButton from "../../controls/primary-button/PrimaryButton.tsx";
 import CardElement from "../../controls/card-element/CardElement.tsx";
 import AddIcon from "../../../assets/elements/add.svg";
-import {useLocation, useNavigate, Navigate} from "react-router-dom";
+import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import VerticalAccordion from "../../controls/vertical-accordion/VerticalAccordion.tsx";
 import Delete from "../../../assets/elements/delete.svg";
-import {useState, useEffect} from "react";
-import type {RootState} from "../../../redux/store.ts";
-import {useSelector} from "react-redux";
+import { useState, useEffect } from "react";
+import type { RootState } from "../../../redux/store.ts";
+import { useSelector } from "react-redux";
 import Login from "../../controls/login/Login.tsx";
 import Modal from "../../controls/modal/Modal.tsx";
 import './Profile.scss';
-import {russianLocalWordConverter} from "../../../utils/russianLocalWordConverter.ts";
+import { russianLocalWordConverter } from "../../../utils/russianLocalWordConverter.ts";
 import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import profileAPI from '../../../api/profileService';
 import type { ProfileUser, ProfileCollection, UserSubscription, UserSubscriber } from '../../../types/profile';
 import { getImageUrl, getCollectionImageUrl } from '../../../api/popularService';
+import { selectIsAdmin } from '../../../redux/authSlice';
+import AdminProfileEditMenu from '../../controls/admin-profile-edit-menu/AdminProfileEditMenu.tsx';
 
 function Profile() {
   const location = useLocation();
   const navigate = useNavigate();
-  
+
   // Получаем userId из state или из location.state (для обратной совместимости)
   const userId = location.state?.userId || location.state?.id;
-  
+
   // Если userId нет - редирект на главную
   if (!userId) {
     return <Navigate to="/" replace />;
@@ -31,6 +33,8 @@ function Profile() {
 
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const currentUser = useSelector((state: RootState) => state.auth.user);
+  const isAdmin = useSelector(selectIsAdmin);
+
   const [showLoginModal, setShowLoginModal] = useState(false);
 
   // Состояния для данных
@@ -46,11 +50,19 @@ function Profile() {
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [subscriptionError, setSubscriptionError] = useState<string | null>(null);
 
+  // Состояния для админских операций
+  const [banLoading, setBanLoading] = useState(false);
+  const [banError, setBanError] = useState<string | null>(null);
+  const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
+
   // Проверяем, заблокирован ли пользователь
   const isBanned = profile?.status === 'banned';
 
   // Проверяем, является ли этот профиль профилем текущего пользователя
   const isOwnProfile = currentUser?.id === userId;
+
+  // Проверяем, может ли текущий пользователь выполнять админские действия
+  const canPerformAdminActions = isAdmin && !isOwnProfile && isAuthenticated;
 
   // Загрузка данных профиля и проверка подписки
   useEffect(() => {
@@ -121,7 +133,7 @@ function Profile() {
       if (isSubscribed) {
         // Отписываемся
         const response = await profileAPI.unsubscribeFromUser(userId);
-        
+
         if (response.data?.state === 'OK') {
           setIsSubscribed(false);
           setCurrentSubscribersCount(prev => prev - 1);
@@ -131,7 +143,7 @@ function Profile() {
       } else {
         // Подписываемся
         const response = await profileAPI.subscribeToUser(userId);
-        
+
         if (response.data?.state === 'OK') {
           setIsSubscribed(true);
           setCurrentSubscribersCount(prev => prev + 1);
@@ -141,7 +153,7 @@ function Profile() {
       }
     } catch (err: any) {
       console.error('Subscription error:', err);
-      
+
       // Обрабатываем специфичные ошибки
       if (err.response?.data?.data?.details?.state === 'Fail_Conflict') {
         setSubscriptionError('Вы уже подписаны на этого пользователя');
@@ -152,6 +164,117 @@ function Profile() {
       }
     } finally {
       setSubscriptionLoading(false);
+    }
+  };
+
+  // Обработчик блокировки/разблокировки пользователя (для администратора)
+  const handleBanUser = async () => {
+    if (!canPerformAdminActions || banLoading) return;
+
+    setBanLoading(true);
+    setBanError(null);
+
+    try {
+      if (isBanned) {
+        // Разблокировать пользователя
+        const response = await profileAPI.unbanUser(userId);
+
+        if (response.data?.state === 'OK') {
+          // Обновляем статус пользователя в локальном состоянии
+          setProfile(prev => prev ? { ...prev, status: 'notBanned' } : null);
+        } else {
+          throw new Error(response.data?.message || 'Ошибка разблокировки');
+        }
+      } else {
+        // Заблокировать пользователя
+        const response = await profileAPI.banUser(userId);
+
+        if (response.data?.state === 'OK') {
+          // Обновляем статус пользователя в локальном состоянии
+          setProfile(prev => prev ? { ...prev, status: 'banned' } : null);
+          // Также сбрасываем подписку, если пользователь был подписан
+          setIsSubscribed(false);
+        } else {
+          throw new Error(response.data?.message || 'Ошибка блокировки');
+        }
+      }
+    } catch (err: any) {
+      console.error('Ban/Unban error:', err);
+      setBanError(err.message || 'Ошибка при выполнении операции');
+    } finally {
+      setBanLoading(false);
+    }
+  };
+
+  // Обработчики для админского редактирования профиля
+  const handleAdminEditProfile = (): void => {
+    setIsAdminEditOpen(true);
+  };
+
+  const handleCloseAdminEditProfile = (): void => {
+    setIsAdminEditOpen(false);
+  };
+
+  const handleAdminUsernameChanged = (newUsername: string) => {
+    if (profile) {
+      setProfile({
+        ...profile,
+        username: newUsername
+      });
+    }
+    // Перезагружаем данные профиля
+    loadProfileData();
+  };
+
+  const handleAdminProfilePhotoChanged = () => {
+    // Перезагружаем данные профиля, чтобы обновилось фото
+    loadProfileData();
+  };
+
+  const handleAdminDescriptionChanged = (newDescription: string) => {
+    if (profile) {
+      setProfile({
+        ...profile,
+        profileDescription: newDescription
+      });
+    }
+  };
+
+  const handleAdminNicknameChanged = (newNickname: string) => {
+    if (profile) {
+      setProfile({
+        ...profile,
+        nickname: newNickname
+      });
+    }
+    // Обновляем отображаемое имя
+    loadProfileData();
+  };
+
+  // Функция для перезагрузки данных профиля
+  const loadProfileData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+
+      // Загружаем данные профиля
+      const [profileData, subscribersData, subscriptionsData, collectionsData] = await Promise.all([
+        profileAPI.getUserProfile(userId),
+        profileAPI.getUserSubscribers(userId, 6, 0),
+        profileAPI.getUserSubscriptions(userId, 6, 0),
+        profileAPI.getUserCollections(userId, 4, 0)
+      ]);
+
+      setProfile(profileData);
+      setCurrentSubscribersCount(profileData.subscribersCount || 0);
+      setSubscribers(subscribersData);
+      setSubscriptions(subscriptionsData);
+      setCollections(collectionsData);
+    } catch (err: any) {
+      console.error('Error loading profile:', err);
+      setError(err.message || 'Ошибка загрузки профиля');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -208,11 +331,11 @@ function Profile() {
   // Получаем URL аватара
   const getAvatarUrl = (): string => {
     if (!profile) return PlaceholderImage;
-    
-    const imageUrl = profile.profileImage ? 
-      getImageUrl(profile.profileImage) : 
+
+    const imageUrl = profile.profileImage ?
+      getImageUrl(profile.profileImage) :
       null;
-    
+
     return imageUrl || PlaceholderImage;
   };
 
@@ -239,8 +362,8 @@ function Profile() {
   const renderErrorState = () => (
     <div className="error-state">
       <p>Ошибка: {error}</p>
-      <SecondaryButton 
-        label="Вернуться на главную" 
+      <SecondaryButton
+        label="Вернуться на главную"
         onClick={() => navigate('/')}
       />
     </div>
@@ -290,32 +413,78 @@ function Profile() {
       <div className="top-container">
         <div className="container-title-with-button">
           <h2>Профиль</h2>
-          {isAuthenticated && !isBanned && !isOwnProfile && (
-            <div className="subscription-container">
-              {subscriptionError && (
-                <div className="subscription-error-message">
-                  {subscriptionError}
+
+          <div className="profile-action-buttons">
+            {/* Кнопка подписки/отписки для обычных пользователей */}
+            {isAuthenticated && !isBanned && !isOwnProfile && (
+              <div className="subscription-button-wrapper">
+                {subscriptionError && (
+                  <div className="subscription-error-message">
+                    {subscriptionError}
+                  </div>
+                )}
+                {subscriptionLoading || isCheckingSubscription ? (
+                  <div className="subscription-loading">
+                    <div className="small-loading-spinner"></div>
+                  </div>
+                ) : isSubscribed ? (
+                  <SecondaryButton
+                    label={"Отписаться"}
+                    onClick={handleSubscribeProfile}
+                    disabled={subscriptionLoading}
+                  />
+                ) : (
+                  <PrimaryButton
+                    label={"Подписаться"}
+                    onClick={handleSubscribeProfile}
+                    disabled={subscriptionLoading}
+                  />
+                )}
+              </div>
+            )}
+
+            {/* Кнопки для администратора */}
+            {canPerformAdminActions && (
+              <>
+                <div className="admin-ban-button-wrapper">
+                  {banError && (
+                    <div className="admin-error-message">
+                      {banError}
+                    </div>
+                  )}
+                  {banLoading ? (
+                    <div className="admin-loading">
+                      <div className="small-loading-spinner"></div>
+                    </div>
+                  ) : isBanned ? (
+                    <PrimaryButton
+                      label={"Разблокировать"}
+                      onClick={handleBanUser}
+                      disabled={banLoading}
+                      style={{ backgroundColor: '#4CAF50' }}
+                    />
+                  ) : (
+                    <PrimaryButton
+                      label={"Заблокировать"}
+                      onClick={handleBanUser}
+                      disabled={banLoading}
+                      style={{ backgroundColor: '#f44336' }}
+                    />
+                  )}
                 </div>
-              )}
-              {subscriptionLoading || isCheckingSubscription ? (
-                <div className="subscription-loading">
-                  <div className="small-loading-spinner"></div>
-                </div>
-              ) : isSubscribed ? (
-                <SecondaryButton 
-                  label={"Отписаться"} 
-                  onClick={handleSubscribeProfile}
-                  disabled={subscriptionLoading}
+
+                <SecondaryButton
+                  label={"Редактировать профиль"}
+                  onClick={handleAdminEditProfile}
+                  style={{
+                    backgroundColor: 'transparent',
+                    borderColor: '#457b9d',
+                    color: '#457b9d'
+                  }}
                 />
-              ) : (
-                <PrimaryButton 
-                  label={"Подписаться"} 
-                  onClick={handleSubscribeProfile}
-                  disabled={subscriptionLoading}
-                />
-              )}
-            </div>
-          )}
+              </>
+            )}
+          </div>
         </div>
 
         {/* Баннер заблокированного пользователя */}
@@ -332,12 +501,12 @@ function Profile() {
           <div className="profile-info-main">
             <div className="profile-info-panel">
               <span className="profile-info-name">{getDisplayName()}</span>
-              
+
               <div className="profile-avatar-container">
-                <img className="profile-avatar" alt="" src={getAvatarUrl()}/>
+                <img className="profile-avatar" alt="" src={getAvatarUrl()} />
                 {isBanned && <div className="profile-avatar-overlay"></div>}
               </div>
-              
+
               <div className="profile-info-additional-container">
                 <div className="profile-info-additional clickable" onClick={handleSubscriberClick}>
                   <span className="profile-info-label">{getFormattedSubscribersCount()} </span>
@@ -352,7 +521,7 @@ function Profile() {
                   <span className="profile-info-sublabel">коллекций</span>
                 </div>
               </div>
-              
+
               {/* Описание профиля */}
               {profileDescription && (
                 <div className="profile-description">
@@ -365,7 +534,7 @@ function Profile() {
             <div className="profile-info-collections">
               <span className="profile-collections-title">Коллекции</span>
               {collections.length > 0 ? (
-                <VerticalAccordion 
+                <VerticalAccordion
                   header={
                     <div className="profile-collections-header">
                       {collections.slice(0, 4).map((collection) => (
@@ -489,6 +658,25 @@ function Profile() {
           </div>
         </div>
       </div>
+
+      {/* Модальное окно для админского редактирования профиля */}
+      {isAdminEditOpen && (
+        <Modal open={isAdminEditOpen} onClose={handleCloseAdminEditProfile}>
+          <AdminProfileEditMenu
+            onClose={handleCloseAdminEditProfile}
+            currentUsername={profile?.username || ''}
+            currentImageUrl={getAvatarUrl()}
+            currentDescription={profile?.profileDescription || null}
+            currentNickname={profile?.nickname || null}
+            currentEmail={profile?.email || null}
+            onUsernameChanged={handleAdminUsernameChanged}
+            onProfilePhotoChanged={handleAdminProfilePhotoChanged}
+            onDescriptionChanged={handleAdminDescriptionChanged}
+            onNicknameChanged={handleAdminNicknameChanged}
+            targetUserId={userId}
+          />
+        </Modal>
+      )}
 
       <Modal
         open={showLoginModal}

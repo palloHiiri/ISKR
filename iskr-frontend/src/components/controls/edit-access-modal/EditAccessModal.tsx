@@ -6,7 +6,7 @@ import PrimaryButton from '../primary-button/PrimaryButton';
 import SecondaryButton from '../secondary-button/SecondaryButton';
 import Input from '../input/Input';
 import './EditAccessModal.scss';
-import cvpAPI, { type CVPStatus, type UserSearchResult } from '../../../api/cvpService';
+import cvpAPI, { type CVPStatus, type UserSearchResult, type AddCVPData } from '../../../api/cvpService';
 import { getSearchImageUrl } from '../../../api/popularService';
 import PlaceholderImage from '../../../assets/images/placeholder.jpg';
 import SearchIcon from '../../../assets/elements/search.svg';
@@ -19,11 +19,12 @@ interface EditAccessModalProps {
   onClose: () => void;
   collectionId: number;
   collectionTitle: string;
+  isAdmin?: boolean;
 }
 
 type UserActionType = 'add' | 'remove' | 'changeStatus';
 
-function EditAccessModal({ open, onClose, collectionId, collectionTitle }: EditAccessModalProps) {
+function EditAccessModal({ open, onClose, collectionId, collectionTitle, isAdmin = false }: EditAccessModalProps) {
   const currentUser = useSelector((state: RootState) => state.auth.user);
   const [privileges, setPrivileges] = useState<CVPStatus[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
@@ -48,7 +49,14 @@ function EditAccessModal({ open, onClose, collectionId, collectionTitle }: EditA
       try {
         setLoading(true);
         setError(null);
-        const data = await cvpAPI.getCollectionPrivileges(collectionId);
+        
+        // Используем административный метод для администраторов
+        let data: CVPStatus[];
+        if (isAdmin) {
+          data = await cvpAPI.getCollectionPrivilegesAdmin(collectionId);
+        } else {
+          data = await cvpAPI.getCollectionPrivileges(collectionId);
+        }
         
         const privilegesArray = Array.isArray(data) ? data : [];
         setPrivileges(privilegesArray);
@@ -62,7 +70,7 @@ function EditAccessModal({ open, onClose, collectionId, collectionTitle }: EditA
     };
 
     loadPrivileges();
-  }, [open, collectionId]);
+  }, [open, collectionId, isAdmin]);
 
   // Поиск пользователей
   useEffect(() => {
@@ -95,12 +103,26 @@ function EditAccessModal({ open, onClose, collectionId, collectionTitle }: EditA
       setLoading(true);
       setError(null);
       
-      await cvpAPI.addCollectionPrivilege(collectionId, {
+      const data: AddCVPData = {
         cvpStatus: status,
         userId
-      });
+      };
+      
+      // Используем административный метод для администраторов
+      if (isAdmin) {
+        await cvpAPI.addCollectionPrivilegeAdmin(collectionId, data);
+      } else {
+        await cvpAPI.addCollectionPrivilege(collectionId, data);
+      }
 
-      const updatedPrivileges = await cvpAPI.getCollectionPrivileges(collectionId);
+      // Перезагружаем список привилегий
+      let updatedPrivileges: CVPStatus[];
+      if (isAdmin) {
+        updatedPrivileges = await cvpAPI.getCollectionPrivilegesAdmin(collectionId);
+      } else {
+        updatedPrivileges = await cvpAPI.getCollectionPrivileges(collectionId);
+      }
+      
       const privilegesArray = Array.isArray(updatedPrivileges) ? updatedPrivileges : [];
       setPrivileges(privilegesArray);
       
@@ -125,8 +147,14 @@ function EditAccessModal({ open, onClose, collectionId, collectionTitle }: EditA
       setLoading(true);
       setError(null);
       
-      await cvpAPI.removeCollectionPrivilege(collectionId, userId);
+      // Используем административный метод для администраторов
+      if (isAdmin) {
+        await cvpAPI.removeCollectionPrivilegeAdmin(collectionId, userId);
+      } else {
+        await cvpAPI.removeCollectionPrivilege(collectionId, userId);
+      }
       
+      // Обновляем локальное состояние
       setPrivileges(prev => prev.filter(p => p.userId !== userId));
       
       setSuccessMessage(`Настройка доступа для пользователя ${username} удалена`);

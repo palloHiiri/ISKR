@@ -20,11 +20,12 @@ interface EditCollectionModalProps {
   onClose: () => void;
   collection: CollectionInfo;
   onCollectionUpdated?: (collection: CollectionInfo) => void;
+  isAdmin?: boolean; // Добавляем проп isAdmin
 }
 
 type ActiveSubModal = 'cover' | 'confidentiality' | 'access' | null;
 
-function EditCollectionModal({ open, onClose, collection, onCollectionUpdated }: EditCollectionModalProps) {
+function EditCollectionModal({ open, onClose, collection, onCollectionUpdated, isAdmin = false }: EditCollectionModalProps) {
   const navigate = useNavigate();
   const currentUser = useSelector((state: RootState) => state.auth.user);
   
@@ -95,7 +96,13 @@ function EditCollectionModal({ open, onClose, collection, onCollectionUpdated }:
         updateData.photoLink = selectedCoverId;
       }
 
-      const updatedCollection = await collectionAPI.updateCollection(collection.collectionId, updateData);
+      // Используем административный метод для администраторов
+      let updatedCollection: CollectionInfo;
+      if (isAdmin) {
+        updatedCollection = await collectionAPI.updateCollectionAdmin(collection.collectionId, updateData);
+      } else {
+        updatedCollection = await collectionAPI.updateCollection(collection.collectionId, updateData);
+      }
       
       // Вызываем callback если передан
       if (onCollectionUpdated) {
@@ -130,7 +137,14 @@ function EditCollectionModal({ open, onClose, collection, onCollectionUpdated }:
   const handleDeleteCollection = async () => {
     try {
       setLoading(true);
-      await collectionAPI.deleteCollection(collection.collectionId);
+      
+      // Используем административный метод для администраторов
+      if (isAdmin) {
+        await collectionAPI.deleteCollectionAdmin(collection.collectionId);
+      } else {
+        await collectionAPI.deleteCollection(collection.collectionId);
+      }
+      
       onClose();
       // Перенаправляем на корень (/)
       navigate('/library');
@@ -341,6 +355,7 @@ function EditCollectionModal({ open, onClose, collection, onCollectionUpdated }:
             onClose={handleSubModalClose}
             collectionId={collection.collectionId}
             collectionTitle={collection.title}
+            isAdmin={isAdmin} // Передаем isAdmin в EditAccessModal
           />
         );
       default:

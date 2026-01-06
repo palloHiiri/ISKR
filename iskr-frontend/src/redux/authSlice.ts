@@ -1,5 +1,5 @@
 import { createSlice, createAsyncThunk, type PayloadAction } from '@reduxjs/toolkit';
-import { authAPI, type LoginData, type RegisterData, type UserData, type ResetPasswordConfirmData, type RegisterResponse, type RedeemTokenData } from '../api/authService';
+import { authAPI, type LoginData, type RegisterData, type UserData, type ResetPasswordConfirmData, type RegisterResponse, type RedeemTokenData, type RoleData, type RolesResponse } from '../api/authService';
 import { API_STATES, ERROR_STATUSES } from '../constants/api';
 
 export interface User {
@@ -11,6 +11,17 @@ export interface User {
   role?: string;
   email_verified?: boolean;
   status?: string;
+  roles?: string[]; // Массив ролей пользователя
+  profile?: {
+    up_id: number;
+    user_imgl_id: number | null;
+    nickname: string;
+    email: string;
+    email_verified: boolean;
+    profile_description: string;
+    birth_date: string | null;
+    status: string;
+  };
 }
 
 interface AuthState {
@@ -20,7 +31,8 @@ interface AuthState {
   isLoading: boolean;
   error: string | null;
   registrationSuccess: boolean;
-  emailVerificationSuccess: boolean; // Новое поле для успешной верификации email
+  emailVerificationSuccess: boolean;
+  isAdmin: boolean; // Новое поле для флага администратора
 }
 
 // Безопасная функция для получения данных из localStorage
@@ -42,6 +54,23 @@ const getStoredToken = (): string | null => {
   return token && token !== 'undefined' && token !== 'null' ? token : null;
 };
 
+// Функция для проверки, является ли пользователь администратором
+const checkIsAdmin = (user: User | null): boolean => {
+  if (!user) return false;
+  
+  // Проверяем наличие роли admin в массиве roles
+  if (user.roles && Array.isArray(user.roles)) {
+    return user.roles.some(role => role.toLowerCase() === 'admin');
+  }
+  
+  // Проверяем поле role (для обратной совместимости)
+  if (user.role) {
+    return user.role.toLowerCase() === 'admin';
+  }
+  
+  return false;
+};
+
 const initialState: AuthState = {
   isAuthenticated: !!getStoredToken(),
   user: getStoredUser(),
@@ -50,15 +79,46 @@ const initialState: AuthState = {
   error: null,
   registrationSuccess: false,
   emailVerificationSuccess: false,
+  isAdmin: checkIsAdmin(getStoredUser()), // Инициализируем флаг администратора
 };
+
+// Thunk для получения ролей пользователя
+export const fetchUserRoles = createAsyncThunk(
+  'auth/fetchUserRoles',
+  async (_, { rejectWithValue }) => {
+    try {
+      const response = await authAPI.getUserRoles();
+      return response;
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.data?.message ||
+        error.response?.data?.message ||
+        error.message ||
+        'Ошибка при получении ролей пользователя';
+      return rejectWithValue(errorMessage);
+    }
+  }
+);
 
 // Асинхронные thunk'и для работы с API
 export const login = createAsyncThunk(
   'auth/login',
-  async (credentials: LoginData, { rejectWithValue }) => {
+  async (credentials: LoginData, { rejectWithValue, dispatch }) => {
     try {
       const response = await authAPI.login(credentials);
-      return response;
+      
+      // После успешного логина получаем роли пользователя
+      let roles: RoleData[] = [];
+      try {
+        const rolesResponse = await authAPI.getUserRoles();
+        roles = rolesResponse.data || [];
+      } catch (rolesError) {
+        console.warn('Не удалось получить роли пользователя:', rolesError);
+      }
+      
+      return {
+        ...response,
+        roles
+      };
     } catch (error: any) {
       let errorMessage = error.response?.data?.data?.message ||
         error.response?.data?.message ||
@@ -192,13 +252,23 @@ export const redeemToken = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для проверки авторизации
+// Добавляем thunk для проверки авторизации с ролями
 export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { rejectWithValue }) => {
     try {
       const userData = await authAPI.getCurrentUser();
-      return userData;
+      
+      // Получаем роли пользователя
+      let roles: RoleData[] = [];
+      try {
+        const rolesResponse = await authAPI.getUserRoles();
+        roles = rolesResponse.data || [];
+      } catch (rolesError) {
+        console.warn('Не удалось получить роли пользователя:', rolesError);
+      }
+      
+      return { user: userData, roles };
     } catch (error: any) {
       localStorage.removeItem('token');
       localStorage.removeItem('user');
@@ -222,6 +292,7 @@ const authSlice = createSlice({
       state.token = null;
       state.registrationSuccess = false;
       state.emailVerificationSuccess = false;
+      state.isAdmin = false;
       localStorage.removeItem('token');
       localStorage.removeItem('user');
     },
@@ -247,6 +318,17 @@ const authSlice = createSlice({
     clearEmailVerificationSuccess: (state) => {
       state.emailVerificationSuccess = false;
     },
+    updateUserRoles: (state, action: PayloadAction<string[]>) => {
+      if (state.user) {
+        state.user.roles = action.payload;
+        state.isAdmin = action.payload.some(role => role.toLowerCase() === 'admin');
+        try {
+          localStorage.setItem('user', JSON.stringify(state.user));
+        } catch (error) {
+          console.error('Error saving user to localStorage:', error);
+        }
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -258,21 +340,23 @@ const authSlice = createSlice({
       .addCase(login.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = {
+        const userWithRoles = {
           ...action.payload.user,
-          userId: action.payload.user.id // Добавляем userId для совместимости
+          userId: action.payload.user.id,
+          roles: action.payload.roles.map((role: RoleData) => role.name)
         };
+        state.user = userWithRoles;
         state.token = action.payload.token;
+        state.isAdmin = action.payload.roles.some((role: RoleData) => 
+          role.name.toLowerCase() === 'admin'
+        );
 
         try {
           if (action.payload.token) {
             localStorage.setItem('token', action.payload.token);
           }
           if (action.payload.user) {
-            localStorage.setItem('user', JSON.stringify({
-              ...action.payload.user,
-              userId: action.payload.user.id
-            }));
+            localStorage.setItem('user', JSON.stringify(userWithRoles));
           }
         } catch (error) {
           console.error('Error saving to localStorage:', error);
@@ -289,7 +373,7 @@ const authSlice = createSlice({
         state.error = null;
         state.registrationSuccess = false;
       })
-      .addCase(signUp.fulfilled, (state, action) => {
+      .addCase(signUp.fulfilled, (state) => {
         state.isLoading = false;
         state.registrationSuccess = true;
         state.error = null;
@@ -343,7 +427,7 @@ const authSlice = createSlice({
         state.emailVerificationSuccess = false;
       })
 
-      // Проверка авторизации
+      // Проверка авторизации с ролями
       .addCase(checkAuth.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -351,17 +435,19 @@ const authSlice = createSlice({
       .addCase(checkAuth.fulfilled, (state, action) => {
         state.isLoading = false;
         state.isAuthenticated = true;
-        state.user = {
-          ...action.payload,
-          userId: action.payload.id // Добавляем userId
+        const userWithRoles = {
+          ...action.payload.user,
+          userId: action.payload.user.id,
+          roles: action.payload.roles.map((role: RoleData) => role.name)
         };
+        state.user = userWithRoles;
+        state.isAdmin = action.payload.roles.some((role: RoleData) => 
+          role.name.toLowerCase() === 'admin'
+        );
 
         try {
-          if (action.payload) {
-            localStorage.setItem('user', JSON.stringify({
-              ...action.payload,
-              userId: action.payload.id
-            }));
+          if (action.payload.user) {
+            localStorage.setItem('user', JSON.stringify(userWithRoles));
           }
         } catch (error) {
           console.error('Error saving user to localStorage:', error);
@@ -372,6 +458,7 @@ const authSlice = createSlice({
         state.isAuthenticated = false;
         state.user = null;
         state.token = null;
+        state.isAdmin = false;
         state.error = action.payload as string;
 
         try {
@@ -380,10 +467,47 @@ const authSlice = createSlice({
         } catch (error) {
           console.error('Error clearing localStorage:', error);
         }
+      })
+
+      // Получение ролей пользователя
+      .addCase(fetchUserRoles.pending, (state) => {
+        state.isLoading = true;
+        state.error = null;
+      })
+      .addCase(fetchUserRoles.fulfilled, (state, action) => {
+        state.isLoading = false;
+        if (state.user) {
+          state.user.roles = action.payload.data.map((role: RoleData) => role.name);
+          state.isAdmin = action.payload.data.some((role: RoleData) => 
+            role.name.toLowerCase() === 'admin'
+          );
+          try {
+            localStorage.setItem('user', JSON.stringify(state.user));
+          } catch (error) {
+            console.error('Error saving user to localStorage:', error);
+          }
+        }
+      })
+      .addCase(fetchUserRoles.rejected, (state, action) => {
+        state.isLoading = false;
+        console.error('Ошибка при получении ролей:', action.payload);
       });
   },
 });
 
-export const { logout, setUsername, clearError, clearRegistrationSuccess, clearEmailVerificationSuccess } = authSlice.actions;
+export const { 
+  logout, 
+  setUsername, 
+  clearError, 
+  clearRegistrationSuccess, 
+  clearEmailVerificationSuccess,
+  updateUserRoles 
+} = authSlice.actions;
+
+// Селекторы для удобного доступа
+export const selectIsAdmin = (state: { auth: AuthState }) => state.auth.isAdmin;
+export const selectUserRoles = (state: { auth: AuthState }) => state.auth.user?.roles || [];
+export const selectHasRole = (roleName: string) => (state: { auth: AuthState }) => 
+  state.auth.user?.roles?.some(role => role.toLowerCase() === roleName.toLowerCase()) || false;
 
 export default authSlice.reducer;

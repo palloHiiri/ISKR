@@ -9,6 +9,7 @@ export const API_ENDPOINTS = {
   LOGOUT: '/v1/accounts/logout',
   GET_CURRENT_USER: '/v1/accounts/user',
   GET_USER_PROFILE: '/v1/accounts/profile',
+  GET_USER_ROLES: '/v1/accounts/role', // Новый эндпоинт для получения ролей
   RESET_PASSWORD: '/v1/accounts/reset-password',
   RESET_PASSWORD_CONFIRM: '/v1/accounts/reset-password-confirm',
   REDEEM_TOKEN: '/v1/accounts/redeem-token',
