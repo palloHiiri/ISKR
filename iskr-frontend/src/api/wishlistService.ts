@@ -40,7 +40,6 @@ export interface ClearWishlistResponse {
 
 
 export const wishlistService = {
-  // Проверка наличия вишлиста у пользователя
   checkWishlist: async (): Promise<WishlistInfo> => {
     const response = await axios.get<ApiResponse<WishlistInfo>>(
       `${OAPI_BASE_URL}/v1/wishlist`
@@ -51,7 +50,6 @@ export const wishlistService = {
     throw new Error(response.data.data.message || 'Не удалось проверить вишлист');
   },
 
-  // Проверка, есть ли книга в вишлисте
   checkBookInWishlist: async (bookId: number): Promise<boolean> => {
     const response = await axios.get<ApiResponse<BookInWishlistStatus>>(
       `${OAPI_BASE_URL}/v1/wishlist/is-book-in`,
@@ -63,7 +61,6 @@ export const wishlistService = {
     throw new Error(response.data.data.message || 'Не удалось проверить наличие книги в вишлисте');
   },
 
-  // Добавление книги в вишлист
   addBookToWishlist: async (bookId: number): Promise<WishlistResponse> => {
     const response = await axios.post<ApiResponse<WishlistResponse>>(
       `${OAPI_BASE_URL}/v1/wishlist`,
@@ -90,7 +87,6 @@ export const wishlistService = {
     throw new Error(response.data.data.message || 'Не удалось очистить вишлист');
   },
 
-  // Удаление книги из вишлиста
   removeBookFromWishlist: async (bookId: number): Promise<WishlistResponse> => {
     const response = await axios.delete<ApiResponse<WishlistResponse>>(
       `${OAPI_BASE_URL}/v1/wishlist`,

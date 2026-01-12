@@ -1,8 +1,6 @@
--- liquibase formatted sql
--- changeset fuzis:1
+
 CREATE SCHEMA ACCOUNTS;
 
--- changeset fuzis:2
 CREATE TABLE ACCOUNTS.USERS(
     user_id SERIAL PRIMARY KEY,
     username VARCHAR(255) NOT NULL UNIQUE,
@@ -29,5 +27,4 @@ CREATE TABLE ACCOUNTS.RESET_PASSWORD_REQUESTS(
     FOREIGN KEY (user_id) REFERENCES ACCOUNTS.USERS(user_id) 
 );
 
--- changeset fuzis:3
 CREATE SCHEMA SSO;

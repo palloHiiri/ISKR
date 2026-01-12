@@ -1,4 +1,3 @@
-// /src/api/bookService.ts
 import axios from 'axios';
 import { OAPI_BASE_URL } from '../constants/api';
 import type { ApiResponse } from '../types/popular';

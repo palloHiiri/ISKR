@@ -1,8 +1,8 @@
 export interface SearchParams {
   Query: string;
-  Types?: string; // "book,user,collection"
+  Types?: string; 
   Limit?: number;
-  Genre?: number; // ID жанра
+  Genre?: number; 
 }
 
 export interface SearchBookData {
@@ -45,7 +45,6 @@ export interface SearchUserData {
   imageExtension?: string;
 }
 
-// Добавляем новый тип для жанров
 export interface SearchGenreData {
   id: number;
   name: string;
@@ -78,7 +77,6 @@ export interface SearchGenreData {
   name: string;
 }
 
-// Обновляем SearchResultItem
 export interface SearchResultItem {
   id: string;
   type: 'book' | 'user' | 'collection' | 'author' | 'genre';

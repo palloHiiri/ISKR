@@ -1,4 +1,3 @@
-// /src/api/adminService.ts
 import axios from 'axios';
 import { OAPI_BASE_URL } from '../constants/api';
 import type { ApiResponse } from '../types/popular';
@@ -35,7 +34,6 @@ export interface CreateGenreData {
 }
 
 export const adminAPI = {
-  // Авторы
   createAuthor: async (data: CreateAuthorData): Promise<Author> => {
     try {
       const response = await axios.post<ApiResponse<Author>>(
@@ -97,7 +95,6 @@ export const adminAPI = {
     }
   },
 
-  // Жанры
   createGenre: async (data: CreateGenreData): Promise<Genre> => {
     try {
       const response = await axios.post<ApiResponse<Genre>>(

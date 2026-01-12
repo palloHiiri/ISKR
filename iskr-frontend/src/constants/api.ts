@@ -1,15 +1,13 @@
-// Базовые URL для API
-export const OAPI_BASE_URL = '/oapi'; // Проксируется через Vite
-export const IMAGES_BASE_URL = '/images'; // Базовый URL для изображений
+export const OAPI_BASE_URL = '/oapi'; 
+export const IMAGES_BASE_URL = '/images'; 
 
-// Endpoints
 export const API_ENDPOINTS = {
   LOGIN: '/v1/accounts/login',
   REGISTER_USER: '/v1/accounts/user',
   LOGOUT: '/v1/accounts/logout',
   GET_CURRENT_USER: '/v1/accounts/user',
   GET_USER_PROFILE: '/v1/accounts/profile',
-  GET_USER_ROLES: '/v1/accounts/role', // Новый эндпоинт для получения ролей
+  GET_USER_ROLES: '/v1/accounts/role', 
   RESET_PASSWORD: '/v1/accounts/reset-password',
   RESET_PASSWORD_CONFIRM: '/v1/accounts/reset-password-confirm',
   REDEEM_TOKEN: '/v1/accounts/redeem-token',
@@ -19,19 +17,16 @@ export const API_ENDPOINTS = {
   SEARCH: '/v1/search/query',
 } as const;
 
-// Ключи для localStorage
 export const STORAGE_KEYS = {
   TOKEN: 'token',
   USER: 'user',
   IS_AUTHENTICATED: 'isAuthenticated',
 } as const;
 
-// Типы ошибок
 export const ERROR_TYPES = {
   AUTHENTICATION_EXCEPTION: 'AuthenticationException',
 } as const;
 
-// Статусы ошибок
 export const ERROR_STATUSES = {
   UNAUTHORIZED: 401,
   FORBIDDEN: 403,
@@ -40,13 +35,11 @@ export const ERROR_STATUSES = {
   INTERNAL_SERVER_ERROR: 500,
 } as const;
 
-// Типы статусов пользователя
 export const USER_STATUSES = {
   NOT_BANNED: 'notBanned',
   BANNED: 'banned',
 } as const;
 
-// Состояния ответов API
 export const API_STATES = {
   OK: 'OK',
   FAIL_NOT_FOUND: 'Fail_NotFound',

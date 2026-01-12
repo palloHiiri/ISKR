@@ -1,4 +1,3 @@
-// /src/components/stars/Stars.tsx
 import Star from "../../assets/elements/star.svg";
 import SemiStar from "../../assets/elements/semi-star.svg";
 import NullStar from "../../assets/elements/null-star.svg";
@@ -12,13 +11,10 @@ interface StarsProps {
 }
 
 function Stars({ count, onChange, size = 'medium', showValue = true }: StarsProps) {
-  // Округляем до ближайшего 0.5 для отображения
   const roundedCount = Math.round(count * 2) / 2;
   
   const handleStarClick = (starValue: number) => {
     if (onChange) {
-      // Если кликаем на уже заполненную звезду и она была полной,
-      // устанавливаем половинчатую оценку
       if (starValue === Math.ceil(count) && count === starValue) {
         onChange(starValue - 0.5);
       } else {
@@ -34,8 +30,6 @@ function Stars({ count, onChange, size = 'medium', showValue = true }: StarsProp
       const x = e.clientX - rect.left;
       const width = rect.width;
       
-      // Если клик в правой половине звезды - полная звезда
-      // Если в левой половине - половина звезды
       if (x > width / 2) {
         onChange(starValue);
       } else {

@@ -4,14 +4,14 @@ import { API_STATES, ERROR_STATUSES } from '../constants/api';
 
 export interface User {
   id: string | number;
-  userId?: number; // Добавляем поле userId для совместимости
+  userId?: number; 
   username: string;
   nickname?: string;
   email?: string;
   role?: string;
   email_verified?: boolean;
   status?: string;
-  roles?: string[]; // Массив ролей пользователя
+  roles?: string[]; 
   profile?: {
     up_id: number;
     user_imgl_id: number | null;
@@ -32,10 +32,9 @@ interface AuthState {
   error: string | null;
   registrationSuccess: boolean;
   emailVerificationSuccess: boolean;
-  isAdmin: boolean; // Новое поле для флага администратора
+  isAdmin: boolean; 
 }
 
-// Безопасная функция для получения данных из localStorage
 const getStoredUser = (): User | null => {
   try {
     const userStr = localStorage.getItem('user');
@@ -54,16 +53,13 @@ const getStoredToken = (): string | null => {
   return token && token !== 'undefined' && token !== 'null' ? token : null;
 };
 
-// Функция для проверки, является ли пользователь администратором
 const checkIsAdmin = (user: User | null): boolean => {
   if (!user) return false;
   
-  // Проверяем наличие роли admin в массиве roles
   if (user.roles && Array.isArray(user.roles)) {
     return user.roles.some(role => role.toLowerCase() === 'admin');
   }
   
-  // Проверяем поле role (для обратной совместимости)
   if (user.role) {
     return user.role.toLowerCase() === 'admin';
   }
@@ -79,10 +75,9 @@ const initialState: AuthState = {
   error: null,
   registrationSuccess: false,
   emailVerificationSuccess: false,
-  isAdmin: checkIsAdmin(getStoredUser()), // Инициализируем флаг администратора
+  isAdmin: checkIsAdmin(getStoredUser()), 
 };
 
-// Thunk для получения ролей пользователя
 export const fetchUserRoles = createAsyncThunk(
   'auth/fetchUserRoles',
   async (_, { rejectWithValue }) => {
@@ -99,14 +94,12 @@ export const fetchUserRoles = createAsyncThunk(
   }
 );
 
-// Асинхронные thunk'и для работы с API
 export const login = createAsyncThunk(
   'auth/login',
   async (credentials: LoginData, { rejectWithValue, dispatch }) => {
     try {
       const response = await authAPI.login(credentials);
       
-      // После успешного логина получаем роли пользователя
       let roles: RoleData[] = [];
       try {
         const rolesResponse = await authAPI.getUserRoles();
@@ -171,7 +164,6 @@ export const signUp = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для восстановления пароля
 export const resetPassword = createAsyncThunk(
   'auth/resetPassword',
   async (login: string, { rejectWithValue }) => {
@@ -189,14 +181,12 @@ export const resetPassword = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для подтверждения сброса пароля
 export const resetPasswordConfirm = createAsyncThunk(
   'auth/resetPasswordConfirm',
   async (data: ResetPasswordConfirmData, { rejectWithValue }) => {
     try {
       const response = await authAPI.resetPasswordConfirm(data);
 
-      // Проверяем статус ответа
       if (response.data.state === API_STATES.OK) {
         return response;
       } else if (response.data.state === API_STATES.FAIL_NOT_FOUND) {
@@ -221,14 +211,12 @@ export const resetPasswordConfirm = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для подтверждения email по токену
 export const redeemToken = createAsyncThunk(
   'auth/redeemToken',
   async (data: RedeemTokenData, { rejectWithValue }) => {
     try {
       const response = await authAPI.redeemToken(data);
 
-      // Проверяем статус ответа
       if (response.data.state === API_STATES.OK) {
         return response;
       } else if (response.data.state === API_STATES.FAIL_NOT_FOUND) {
@@ -242,7 +230,6 @@ export const redeemToken = createAsyncThunk(
         error.message ||
         'Ошибка при подтверждении email';
 
-      // Обработка 404 ошибки
       if (error.response?.status === 404) {
         errorMessage = 'Недействительная ссылка для подтверждения email';
       }
@@ -252,14 +239,12 @@ export const redeemToken = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для проверки авторизации с ролями
 export const checkAuth = createAsyncThunk(
   'auth/checkAuth',
   async (_, { rejectWithValue }) => {
     try {
       const userData = await authAPI.getCurrentUser();
       
-      // Получаем роли пользователя
       let roles: RoleData[] = [];
       try {
         const rolesResponse = await authAPI.getUserRoles();
@@ -332,7 +317,6 @@ const authSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Логин
       .addCase(login.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -367,7 +351,6 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Регистрация
       .addCase(signUp.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -384,7 +367,6 @@ const authSlice = createSlice({
         state.registrationSuccess = false;
       })
 
-      // Восстановление пароля
       .addCase(resetPassword.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -397,7 +379,6 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Подтверждение сброса пароля
       .addCase(resetPasswordConfirm.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -410,7 +391,6 @@ const authSlice = createSlice({
         state.error = action.payload as string;
       })
 
-      // Подтверждение email по токену
       .addCase(redeemToken.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -427,7 +407,6 @@ const authSlice = createSlice({
         state.emailVerificationSuccess = false;
       })
 
-      // Проверка авторизации с ролями
       .addCase(checkAuth.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -469,7 +448,6 @@ const authSlice = createSlice({
         }
       })
 
-      // Получение ролей пользователя
       .addCase(fetchUserRoles.pending, (state) => {
         state.isLoading = true;
         state.error = null;
@@ -504,7 +482,6 @@ export const {
   updateUserRoles 
 } = authSlice.actions;
 
-// Селекторы для удобного доступа
 export const selectIsAdmin = (state: { auth: AuthState }) => state.auth.isAdmin;
 export const selectUserRoles = (state: { auth: AuthState }) => state.auth.user?.roles || [];
 export const selectHasRole = (roleName: string) => (state: { auth: AuthState }) => 

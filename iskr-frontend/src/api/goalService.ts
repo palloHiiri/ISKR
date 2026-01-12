@@ -42,7 +42,6 @@ export interface CreateGoalRequest {
 export interface UpdateGoalRequest extends CreateGoalRequest {}
 
 export const goalService = {
-  // Получение всех целей пользователя
   getGoals: async (): Promise<Goal[]> => {
     const response = await axios.get<ApiResponse<{
       totalGoals: number;
@@ -57,7 +56,6 @@ export const goalService = {
     throw new Error(response.data.data.message || 'Не удалось загрузить цели');
   },
 
-  // Создание новой цели
   createGoal: async (data: CreateGoalRequest): Promise<Goal> => {
     const response = await axios.post<ApiResponse<Goal>>(
       `${OAPI_BASE_URL}/v1/reading/goals`,
@@ -71,7 +69,6 @@ export const goalService = {
     throw new Error(response.data.data.message || 'Не удалось создать цель');
   },
 
-  // Обновление цели
   updateGoal: async (goalId: number, data: UpdateGoalRequest): Promise<Goal> => {
     const response = await axios.put<ApiResponse<Goal>>(
       `${OAPI_BASE_URL}/v1/reading/goals`,
@@ -86,7 +83,6 @@ export const goalService = {
     throw new Error(response.data.data.message || 'Не удалось обновить цель');
   },
 
-  // Удаление цели
   deleteGoal: async (goalId: number): Promise<void> => {
     const response = await axios.delete<ApiResponse<null>>(
       `${OAPI_BASE_URL}/v1/reading/goals`,
@@ -98,7 +94,6 @@ export const goalService = {
     }
   },
 
-  // Получение статистики по целям
   getGoalStats: async (): Promise<GoalStats> => {
     const response = await axios.get<ApiResponse<{
       stats: GoalStats;
@@ -112,7 +107,6 @@ export const goalService = {
     throw new Error(response.data.data.message || 'Не удалось загрузить статистику целей');
   },
 
-  // Получение общей статистики чтения
   getReadingStats: async (): Promise<ReadingStats> => {
     const response = await axios.get<ApiResponse<{
       stats: ReadingStats;
@@ -127,7 +121,6 @@ export const goalService = {
   },
 };
 
-// Вспомогательные функции для отображения
 export const getPeriodDisplayName = (period: GoalPeriod): string => {
   switch (period) {
     case '1d': return '1 день';

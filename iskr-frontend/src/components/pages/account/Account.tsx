@@ -22,7 +22,6 @@ function Account() {
   const navigate = useNavigate();
   const [showLoginModal, setShowLoginModal] = useState(false);
   
-  // Состояния для данных
   const [profile, setProfile] = useState<ProfileUser | null>(null);
   const [subscribers, setSubscribers] = useState<UserSubscriber[]>([]);
   const [subscriptions, setSubscriptions] = useState<UserSubscription[]>([]);
@@ -31,7 +30,6 @@ function Account() {
   const [error, setError] = useState<string | null>(null);
   const [isEditProfileOpen, setIsEditProfileOpen] = useState(false);
 
-  // Функция для загрузки данных профиля (вынесена для переиспользования)
   const loadProfileData = useCallback(async () => {
     if (!authUser?.id) {
       setError("Пользователь не авторизован");
@@ -43,10 +41,8 @@ function Account() {
       setLoading(true);
       setError(null);
 
-      // Преобразуем id в число (если строка)
       const userId = typeof authUser.id === 'string' ? parseInt(authUser.id) : authUser.id;
       
-      // Загружаем все данные параллельно
       const [profileData, subscribersData, subscriptionsData, collectionsData] = await Promise.all([
         profileAPI.getUserProfile(userId),
         profileAPI.getUserSubscribers(userId, 6, 0),
@@ -66,12 +62,10 @@ function Account() {
     }
   }, [authUser?.id]);
 
-  // Загрузка данных профиля текущего пользователя
   useEffect(() => {
     loadProfileData();
   }, [loadProfileData]);
 
-  // Обработчики
   const handleSubscriberClick = () => {
     if (profile) {
       navigate('/followers', {
@@ -84,7 +78,6 @@ function Account() {
   };
 
   const handleProfilePhotoChanged = () => {
-  // Перезагружаем данные профиля, чтобы обновилось фото
   loadProfileData();
 };
 
@@ -131,17 +124,13 @@ function Account() {
     setIsEditProfileOpen(false);
   };
 
-  // Функция для обновления имени пользователя
   const handleUsernameChanged = (newUsername: string) => {
-    // Обновляем состояние профиля
     if (profile) {
       setProfile({
         ...profile,
         username: newUsername
       });
     }
-    
-    // Перезагружаем данные профиля
     loadProfileData();
   };
 
@@ -161,11 +150,9 @@ const handleNicknameChanged = (newNickname: string) => {
       nickname: newNickname
     });
   }
-  // Обновляем отображаемое имя
   loadProfileData();
 };
 
-  // Получаем URL аватара
   const getAvatarUrl = (): string => {
     if (!profile) return PlaceholderImage;
     
@@ -176,19 +163,16 @@ const handleNicknameChanged = (newNickname: string) => {
     return imageUrl || PlaceholderImage;
   };
 
-  // Получаем отображаемое имя
   const getDisplayName = (): string => {
     if (!profile) return 'Загрузка...';
     return profile.nickname || profile.username || 'Пользователь';
   };
 
-  // Получаем описание профиля
   const getProfileDescription = (): string | null => {
     if (!profile) return null;
     return profile.profileDescription || null;
   };
 
-  // Функция для форматирования количества подписчиков с правильным склонением
   const formatSubscribersCount = (count: number): string => {
     const formattedCount = count.toLocaleString('ru-RU');
     const word = russianLocalWordConverter(
@@ -201,7 +185,6 @@ const handleNicknameChanged = (newNickname: string) => {
     return `${formattedCount} ${word}`;
   };
 
-  // Рендер состояний загрузки и ошибок
   const renderLoadingState = () => (
     <div className="loading-state">
       <div className="loading-spinner"></div>
@@ -340,7 +323,7 @@ const handleNicknameChanged = (newNickname: string) => {
                             'книг'
                           )}`}
                           imageUrl={getCollectionImageUrl(collection as any) || PlaceholderImage}
-                          button={false} // В своем профиле не показываем кнопки для своих коллекций
+                          button={false}  
                           onClick={() => handleCollectionClick(collection)}
                         />
                       </div>

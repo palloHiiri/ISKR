@@ -2,13 +2,11 @@ import axios from 'axios';
 import { OAPI_BASE_URL } from '../constants/api';
 import type { ApiResponse } from '../types/popular';
 
-// Создаем инстанс axios
 const api = axios.create({
   baseURL: OAPI_BASE_URL,
   timeout: 10000,
 });
 
-// Типы для ответов API
 export interface LibraryBook {
   bookId: number;
   isbn: string | null;
@@ -71,7 +69,6 @@ export interface WishlistResponse {
 }
 
 export const libraryAPI = {
-  // Получение книг в библиотеке пользователя
   getLibraryBooks: async (): Promise<LibraryBook[]> => {
     try {
       const response = await api.get<ApiResponse<{ books: LibraryBook[]; count: number }>>('/v1/library-books');
@@ -87,13 +84,11 @@ export const libraryAPI = {
     }
   },
 
-  // Получение коллекций в библиотеке пользователя
   getLibraryCollections: async (): Promise<LibraryCollection[]> => {
     try {
       const response = await api.get<ApiResponse<{ collections: LibraryCollection[]; count: number }>>('/v1/library-collections');
       
       if (response.data.data.state === 'OK') {
-        // Исключаем вишлист из обычных коллекций
         return response.data.data.key.collections
       }
       
@@ -104,7 +99,6 @@ export const libraryAPI = {
     }
   },
 
-  // Получение вишлиста
   getWishlist: async (): Promise<{ books: LibraryBook[]; wishlistId?: number }> => {
     try {
       const response = await api.get<ApiResponse<WishlistResponse>>('/v1/library-wishlist');
@@ -112,7 +106,6 @@ export const libraryAPI = {
       if (response.data.data.state === 'OK') {
         const key = response.data.data.key;
         
-        // Проверяем, есть ли вишлист
         if (key.count === 0 && response.data.data.message === 'No wishlist found for user') {
           return { books: [], wishlistId: undefined };
         }

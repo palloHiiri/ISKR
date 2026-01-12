@@ -3,14 +3,12 @@ import { OAPI_BASE_URL } from '../constants/api';
 import type { ProfileUser, ProfileCollection, UserSubscription, UserSubscriber, PaginatedResponse } from '../types/profile';
 import type { ApiResponse } from '../types/popular';
 
-// Создаем инстанс axios
 const api = axios.create({
   baseURL: OAPI_BASE_URL,
   timeout: 10000,
 });
 
 export const profileAPI = {
-  // Получение данных профиля пользователя
   getUserProfile: async (userId: number): Promise<ProfileUser> => {
     try {
       const response = await api.get<ApiResponse<ProfileUser>>(`/v1/user?userId=${userId}`);
@@ -26,7 +24,6 @@ export const profileAPI = {
     }
   },
 
-  // Получение подписчиков пользователя (для Profile.tsx - возвращает массив)
   getUserSubscribers: async (
     userId: number, 
     batch: number = 4, 
@@ -53,7 +50,6 @@ export const profileAPI = {
     }
   },
 
-  // Получение подписчиков пользователя с пагинацией (для Followers.tsx)
   getUserSubscribersPaginated: async (
     userId: number, 
     batch: number = 8, 
@@ -87,7 +83,6 @@ export const profileAPI = {
     }
   },
 
-  // Получение подписок пользователя (для Profile.tsx - возвращает массив)
   getUserSubscriptions: async (
     userId: number, 
     batch: number = 4, 
@@ -114,7 +109,6 @@ export const profileAPI = {
     }
   },
 
-  // Получение подписок пользователя с пагинацией (для Subscriptions.tsx)
   getUserSubscriptionsPaginated: async (
     userId: number, 
     batch: number = 8, 
@@ -148,7 +142,6 @@ export const profileAPI = {
     }
   },
 
-  // profileService.ts - добавить новую функцию
 changeUsername: async (newUsername: string): Promise<ApiResponse<any>> => {
   try {
     const params = new URLSearchParams();
@@ -177,7 +170,6 @@ uploadImage: async (file: File): Promise<any> => {
       },
     });
 
-    // Возвращаем весь ответ, так как структура может быть разной
     return response.data;
   } catch (error) {
     console.error('Error uploading image:', error);
@@ -185,7 +177,6 @@ uploadImage: async (file: File): Promise<any> => {
   }
 },
 
-// Изменение фото профиля
 changeProfileImage: async (imageId: number): Promise<any> => {
   try {
     const response = await api.put(`/v1/accounts/image?New-Image-ID=${imageId}`);
@@ -213,7 +204,6 @@ changeProfileDescription: async (description: string): Promise<any> => {
   }
 },
 
-// Изменение никнейма
 changeNickname: async (nickname: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -231,7 +221,6 @@ changeNickname: async (nickname: string): Promise<any> => {
   }
 },
 
-// Изменение email
 changeEmail: async (email: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -265,7 +254,6 @@ changePassword: async (newPassword: string): Promise<any> => {
   }
 },
 
-  // Получение коллекций пользователя
   getUserCollections: async (
     userId: number, 
     batch: number = 4, 
@@ -326,9 +314,7 @@ checkSubscription: async (userOnId: number): Promise<boolean> => {
   }
 },
 
-// === НОВЫЕ МЕТОДЫ ДЛЯ АДМИНИСТРАТОРА ===
 
-// Заблокировать пользователя
 banUser: async (userId: number): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -344,7 +330,6 @@ banUser: async (userId: number): Promise<any> => {
   } catch (error: any) {
     console.error('Error banning user:', error);
     
-    // Более информативное сообщение об ошибке
     const errorMessage = error.response?.data?.data?.message ||
       error.response?.data?.message ||
       error.message ||
@@ -354,7 +339,6 @@ banUser: async (userId: number): Promise<any> => {
   }
 },
 
-// Разблокировать пользователя
 unbanUser: async (userId: number): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -403,7 +387,6 @@ changeUsernameAdmin: async (userId: number, newUsername: string): Promise<any> =
   }
 },
 
-// Изменить описание профиля (админ)
 changeProfileDescriptionAdmin: async (userId: number, description: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -429,7 +412,6 @@ changeProfileDescriptionAdmin: async (userId: number, description: string): Prom
   }
 },
 
-// Изменить никнейм (админ)
 changeNicknameAdmin: async (userId: number, nickname: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -455,7 +437,6 @@ changeNicknameAdmin: async (userId: number, nickname: string): Promise<any> => {
   }
 },
 
-// Изменить email (админ)
 changeEmailAdmin: async (userId: number, email: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -481,7 +462,6 @@ changeEmailAdmin: async (userId: number, email: string): Promise<any> => {
   }
 },
 
-// Изменить пароль (админ)
 changePasswordAdmin: async (userId: number, newPassword: string): Promise<any> => {
   try {
     const params = new URLSearchParams();
@@ -507,7 +487,6 @@ changePasswordAdmin: async (userId: number, newPassword: string): Promise<any> =
   }
 },
 
-// Изменить фото профиля (админ)
 changeProfileImageAdmin: async (userId: number, imageId: number): Promise<any> => {
   try {
     const response = await api.put(`/v1/accounts/admin/image?X-User-Change-ID=${userId}&New-Image-ID=${imageId}`);

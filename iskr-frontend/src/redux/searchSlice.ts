@@ -4,7 +4,7 @@ import type { Book, Collection, User } from '../types/popular';
 
 interface SearchState {
   query: string;
-  types: string[]; // ['book', 'user', 'collection']
+  types: string[]; 
   genre: number | null;
   results: {
     books: Book[];
@@ -16,10 +16,9 @@ interface SearchState {
   limit: number;
   hasMore: boolean;
   total: number;
-  // Добавляем новые поля для жанров
   genres: Array<{id: number, name: string}>;
   loadingGenres: boolean;
-  selectedGenreName: string; // для отображения в UI
+  selectedGenreName: string; 
 }
 
 const initialState: SearchState = {
@@ -36,7 +35,6 @@ const initialState: SearchState = {
   limit: 10,
   hasMore: false,
   total: 0,
-  // Инициализируем новые поля
   genres: [],
   loadingGenres: false,
   selectedGenreName: 'Все жанры',
@@ -64,7 +62,6 @@ export const performSearch = createAsyncThunk(
   }
 );
 
-// Добавляем thunk для загрузки жанров
 export const fetchGenres = createAsyncThunk(
   'search/fetchGenres',
   async (_, { rejectWithValue }) => {
@@ -123,10 +120,8 @@ const searchSlice = createSlice({
         const { books, users, collections, total, hasMore } = action.payload;
         
         if (state.limit <= 10) {
-          // Первый запрос или сброс - заменяем результаты
           state.results = { books, users, collections };
         } else {
-          // Пагинация - добавляем к существующим
           state.results.books = [...state.results.books, ...books];
           state.results.users = [...state.results.users, ...users];
           state.results.collections = [...state.results.collections, ...collections];

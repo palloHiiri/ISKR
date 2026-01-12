@@ -1,4 +1,3 @@
-// /src/api/cvpService.ts
 import axios from 'axios';
 import { OAPI_BASE_URL } from '../constants/api';
 import type { ApiResponse } from '../types/popular';
@@ -41,7 +40,6 @@ export interface UserSearchResult {
 }
 
 export const cvpAPI = {
-  // Получить все CVP для коллекции (обычный пользователь)
   getCollectionPrivileges: async (collectionId: number): Promise<CVPStatus[]> => {
     try {
       const response = await axios.get<ApiResponse<PrivilegesResponse>>(
@@ -65,7 +63,6 @@ export const cvpAPI = {
     }
   },
 
-  // Получить все CVP для коллекции (администратор)
   getCollectionPrivilegesAdmin: async (collectionId: number): Promise<CVPStatus[]> => {
     try {
       const response = await axios.get<ApiResponse<PrivilegesResponse>>(
@@ -89,7 +86,6 @@ export const cvpAPI = {
     }
   },
 
-  // Добавить CVP (обычный пользователь)
   addCollectionPrivilege: async (collectionId: number, data: AddCVPData): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -112,7 +108,6 @@ export const cvpAPI = {
     }
   },
 
-  // Добавить CVP (администратор)
   addCollectionPrivilegeAdmin: async (collectionId: number, data: AddCVPData): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -135,7 +130,6 @@ export const cvpAPI = {
     }
   },
 
-  // Удалить CVP (обычный пользователь)
   removeCollectionPrivilege: async (collectionId: number, userId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -154,7 +148,6 @@ export const cvpAPI = {
     }
   },
 
-  // Удалить CVP (администратор)
   removeCollectionPrivilegeAdmin: async (collectionId: number, userId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -173,7 +166,6 @@ export const cvpAPI = {
     }
   },
 
-  // Поиск пользователей для добавления CVP
   searchUsers: async (query: string, limit: number = 10): Promise<UserSearchResult[]> => {
     try {
       const searchParams = {

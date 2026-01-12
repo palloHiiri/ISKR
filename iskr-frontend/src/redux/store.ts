@@ -2,7 +2,7 @@ import { configureStore } from '@reduxjs/toolkit';
 import authReducer from './authSlice';
 import goalsReducer from './goalsSlice';
 import popularReducer from './popularSlice';
-import searchReducer from './searchSlice'; // новый reducer
+import searchReducer from './searchSlice'; 
 
 export const store = configureStore({
   reducer: {

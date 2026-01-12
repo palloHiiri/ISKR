@@ -1,3 +1,1 @@
--- liquibase formatted sql
--- changeset fuzis:1
 INSERT INTO ACCOUNTS.TOKEN_TYPES(tt_id, tt_name) VALUES (1, 'reset_password_token'), (2, 'verify_email_token'), (3, 'general_acceptance_token');

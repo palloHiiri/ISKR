@@ -1,4 +1,3 @@
-// /src/types/cvp.ts
 export interface CVPStatus {
   cvpId: number;
   collectionId: number;

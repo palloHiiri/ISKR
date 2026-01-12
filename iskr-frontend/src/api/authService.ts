@@ -1,7 +1,6 @@
 import axios from 'axios';
 import { OAPI_BASE_URL, API_ENDPOINTS } from '../constants/api';
 
-// Создаем инстанс axios с базовыми настройками
 const api = axios.create({
   baseURL: OAPI_BASE_URL,
   headers: {
@@ -10,7 +9,6 @@ const api = axios.create({
   withCredentials: true,
 });
 
-// Функция для преобразования объекта в URLSearchParams
 const toFormUrlEncoded = (data: Record<string, any>): URLSearchParams => {
   const params = new URLSearchParams();
   Object.keys(data).forEach(key => {
@@ -83,7 +81,7 @@ export interface UserData {
   email_verified?: boolean;
   role?: string;
   status?: string;
-  roles?: string[]; // Добавлено для хранения ролей
+  roles?: string[]; 
 }
 
 export interface ResetPasswordResponse {
@@ -121,7 +119,6 @@ export interface RedeemTokenResponse {
   };
 }
 
-// Типы для ролей
 export interface RoleData {
   id: string;
   name: string;
@@ -202,7 +199,6 @@ export const authAPI = {
     }
   },
 
-  // Новый метод для получения ролей пользователя
   getUserRoles: async (): Promise<RolesResponse> => {
     const response = await api.get(API_ENDPOINTS.GET_USER_ROLES);
     return response.data;

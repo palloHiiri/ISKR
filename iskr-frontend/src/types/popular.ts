@@ -1,4 +1,3 @@
-// Тип для изображения
 export interface ImageData {
   imgdId: number;
   uuid: string;
@@ -12,7 +11,6 @@ export interface PhotoLink {
   imageData: ImageData;
 }
 
-// Тип для пользователя (остается без изменений)
 export interface User {
   userId: number;
   username: string;
@@ -23,7 +21,6 @@ export interface User {
   profileImage: PhotoLink | null;
 }
 
-// Тип для книги (обновлен по реальным данным API)
 export interface Book {
   bookId: number;
   title: string;
@@ -34,13 +31,12 @@ export interface Book {
   averageRating: number | null;
   photoLink: PhotoLink | null;
   description?: string;
-  authors?: string[]; // Добавляем авторов
-  genres?: string[]; // Добавляем жанры
-  imageUuid?: string; // Для поиска
-  imageExtension?: string; // Для поиска
+  authors?: string[]; 
+  genres?: string[]; 
+  imageUuid?: string; 
+  imageExtension?: string; 
 }
 
-// Тип для коллекции (обновлен по реальным данным API)
 export interface Collection {
   collectionId: number;
   title: string;
@@ -53,7 +49,6 @@ export interface Collection {
   photoLink: PhotoLink | null;
 }
 
-// Общие типы ответов API
 export interface PopularResponse<T> {
   data: {
     state: string;
@@ -73,7 +68,6 @@ export interface PopularResponse<T> {
   };
 }
 
-// Общий тип ответа API
 export interface ApiResponse<T> {
   data: {
     state: string;

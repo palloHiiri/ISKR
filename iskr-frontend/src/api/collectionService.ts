@@ -1,4 +1,3 @@
-// /src/api/collectionService.ts
 import axios from 'axios';
 import { OAPI_BASE_URL } from '../constants/api';
 import type { ApiResponse } from '../types/popular';
@@ -95,7 +94,6 @@ export interface BookInCollectionStatus {
 }
 
 export const collectionAPI = {
-  // Получение информации о коллекции (обычный пользователь)
   getCollection: async (collectionId: number, useAuth: boolean = false): Promise<CollectionInfo> => {
     try {
       const endpoint = useAuth ? '/v1/collections/auth' : '/v1/collections';
@@ -120,7 +118,6 @@ export const collectionAPI = {
     }
   },
 
-  // Получение информации о коллекции (администратор)
   getCollectionAdmin: async (collectionId: number): Promise<CollectionInfo> => {
     try {
       const response = await axios.get<ApiResponse<CollectionInfo>>(
@@ -144,7 +141,6 @@ export const collectionAPI = {
     }
   },
 
-  // Получение книг коллекции (обычный пользователь)
   getCollectionBooks: async (
     collectionId: number,
     batch: number = 10,
@@ -176,7 +172,6 @@ export const collectionAPI = {
     }
   },
 
-  // Получение книг коллекции (администратор)
   getCollectionBooksAdmin: async (
     collectionId: number,
     batch: number = 10,
@@ -206,7 +201,6 @@ export const collectionAPI = {
     }
   },
 
-  // Получение всех коллекций пользователя
   getUserCollections: async (): Promise<UserCollectionsResponse> => {
     try {
       const response = await axios.get<ApiResponse<UserCollectionsResponse>>(
@@ -224,7 +218,6 @@ export const collectionAPI = {
     }
   },
 
-  // Создание коллекции
   createCollection: async (data: CreateCollectionData): Promise<CollectionInfo> => {
     try {
       const response = await axios.post<ApiResponse<CollectionInfo>>(
@@ -263,7 +256,6 @@ export const collectionAPI = {
     }
   },
 
-  // Обновление коллекции (обычный пользователь)
   updateCollection: async (collectionId: number, data: Partial<CreateCollectionData>): Promise<CollectionInfo> => {
     try {
       const response = await axios.put<ApiResponse<CollectionInfo>>(
@@ -287,7 +279,6 @@ export const collectionAPI = {
     }
   },
 
-  // Обновление коллекции (администратор)
   updateCollectionAdmin: async (collectionId: number, data: Partial<CreateCollectionData>): Promise<CollectionInfo> => {
     try {
       const response = await axios.put<ApiResponse<CollectionInfo>>(
@@ -311,7 +302,6 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление коллекции (обычный пользователь)
   deleteCollection: async (collectionId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -327,7 +317,6 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление коллекции (администратор)
   deleteCollectionAdmin: async (collectionId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -343,7 +332,6 @@ export const collectionAPI = {
     }
   },
 
-  // Добавление книги в коллекцию (обычный пользователь)
   addBookToCollection: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -365,7 +353,6 @@ export const collectionAPI = {
     }
   },
 
-  // Добавление книги в коллекцию (администратор)
   addBookToCollectionAdmin: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -387,7 +374,6 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление книги из коллекции (обычный пользователь)
   removeBookFromCollection: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -403,7 +389,6 @@ export const collectionAPI = {
     }
   },
 
-  // Удаление книги из коллекции (администратор)
   removeBookFromCollectionAdmin: async (collectionId: number, bookId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -419,7 +404,6 @@ export const collectionAPI = {
     }
   },
 
-  // Проверка наличия книги в коллекции
   checkBookInCollection: async (collectionId: number, bookId: number): Promise<BookInCollectionStatus> => {
     try {
       const response = await axios.get<ApiResponse<any>>(
@@ -431,7 +415,6 @@ export const collectionAPI = {
 
       if (response.data.data.state === 'OK') {
         const key = response.data.data.key;
-        // Преобразуем ответ сервера в наш интерфейс
         return {
           isInCollection: key.exists || false,
           collectionId: key.collectionId || collectionId,
@@ -446,7 +429,6 @@ export const collectionAPI = {
     }
   },
 
-  // Получение статуса лайка
   getLikeStatus: async (collectionId: number): Promise<LikeStatus> => {
     try {
       const response = await axios.get<ApiResponse<LikeStatus>>(
@@ -464,7 +446,6 @@ export const collectionAPI = {
     }
   },
 
-  // Поставить лайк коллекции
   likeCollection: async (collectionId: number): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -480,7 +461,6 @@ export const collectionAPI = {
     }
   },
 
-  // Убрать лайк коллекции
   unlikeCollection: async (collectionId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(
@@ -506,7 +486,6 @@ export const collectionAPI = {
 
       if (response.data.data.state === 'OK') {
         const key = response.data.data.key;
-        // Преобразуем ответ сервера в наш интерфейс
         return {
           isInCollection: key.exists || false,
           collectionId: key.collectionId || collectionId,
@@ -521,7 +500,6 @@ export const collectionAPI = {
     }
   },
 
-  // Управление правами доступа - добавление привилегии (администратор)
   addCollectionPrivilegeAdmin: async (collectionId: number, data: AddCVPData): Promise<void> => {
     try {
       const response = await axios.post<ApiResponse<void>>(
@@ -544,7 +522,6 @@ export const collectionAPI = {
     }
   },
 
-  // Управление правами доступа - удаление привилегии (администратор)
   removeCollectionPrivilegeAdmin: async (collectionId: number, userId: number): Promise<void> => {
     try {
       const response = await axios.delete<ApiResponse<void>>(

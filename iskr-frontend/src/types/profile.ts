@@ -35,7 +35,6 @@ export interface UserSubscriber {
   subscribersCount: number;
 }
 
-// Типы для пагинации
 export interface PaginatedResponse<T> {
   items: T[];
   batch: number;

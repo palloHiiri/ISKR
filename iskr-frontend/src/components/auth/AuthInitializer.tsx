@@ -7,7 +7,6 @@ export const AuthInitializer = () => {
   const dispatch = useDispatch<AppDispatch>();
 
   useEffect(() => {
-    // При загрузке приложения проверяем авторизацию
     const isAuthenticated = localStorage.getItem('isAuthenticated') === 'true';
     
     if (isAuthenticated) {
@@ -15,5 +14,5 @@ export const AuthInitializer = () => {
     }
   }, [dispatch]);
 
-  return null; // Этот компонент ничего не рендерит
+  return null; 
 };

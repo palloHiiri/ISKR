@@ -32,7 +32,6 @@ function Header({ showLoginModal = false }: HeaderProps) {
   const [authType, setAuthType] = useState<'login'|'signup'>('login');
   const [isAdmin, setIsAdmin] = useState(false);
 
-  // Автоматически открываем модалку если получен соответствующий пропс
   useEffect(() => {
     if (showLoginModal && !isAuthenticated) {
       setAuthType('login');
@@ -41,7 +40,6 @@ function Header({ showLoginModal = false }: HeaderProps) {
     }
   }, [showLoginModal, isAuthenticated, navigate]);
 
-  // При загрузке компонента проверяем авторизацию
   useEffect(() => {
     const checkAuthStatus = async () => {
       const hasAuthCookie = document.cookie.includes('Authorization=') || 
@@ -62,7 +60,6 @@ function Header({ showLoginModal = false }: HeaderProps) {
   }, [dispatch]);
 
   useEffect(() => {
-    // Проверяем роль и статус пользователя
     if (user) {
       const isUserAdmin = user.username?.toLowerCase().includes('admin') || 
                          user.role === 'admin';

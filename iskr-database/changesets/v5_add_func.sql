@@ -1,6 +1,3 @@
--- liquibase formatted sql
-
--- changeset fuzis:1
 CREATE OR REPLACE FUNCTION BOOKS.GET_VISIBLE_BOOKS_FOR_USER(
     p_user_id INTEGER
 ) RETURNS TABLE(

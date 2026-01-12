@@ -1,5 +1,4 @@
--- liquibase formatted sql
--- changeset fuzis:1
+
 CREATE FUNCTION BOOKS.CAN_VIEW_COLLECTION(
     p_user_id INTEGER,
     p_collection_id INTEGER

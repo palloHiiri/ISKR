@@ -1,10 +1,8 @@
-// /src/api/searchService.ts
 import axios from 'axios';
 import { OAPI_BASE_URL, IMAGES_BASE_URL } from '../constants/api';
 import type { SearchParams, SearchResponse, SearchResultItem, SearchBookData, SearchCollectionData, SearchUserData, SearchGenreData, SearchAuthorData } from '../types/search';
 import type { Book, Collection, User, PhotoLink, ImageData } from '../types/popular';
 
-// Функция для преобразования объекта в URLSearchParams
 const toFormUrlEncoded = (data: Record<string, any>): URLSearchParams => {
   const params = new URLSearchParams();
   Object.keys(data).forEach(key => {
@@ -15,7 +13,6 @@ const toFormUrlEncoded = (data: Record<string, any>): URLSearchParams => {
   return params;
 };
 
-// Создаем инстанс axios для поиска
 const searchApi = axios.create({
   baseURL: OAPI_BASE_URL,
   timeout: 10000,
@@ -24,7 +21,6 @@ const searchApi = axios.create({
   },
 });
 
-// Функция для получения URL изображения из поисковых данных
 export const getSearchImageUrl = (imageUuid?: string, imageExtension?: string): string | null => {
   if (!imageUuid || !imageExtension) {
     return null;
@@ -32,7 +28,6 @@ export const getSearchImageUrl = (imageUuid?: string, imageExtension?: string): 
   return `${IMAGES_BASE_URL}/${imageUuid}.${imageExtension}`;
 };
 
-// Функция для создания объекта PhotoLink из данных поиска
 const createPhotoLinkFromSearch = (imageUuid?: string, imageExtension?: string): PhotoLink | null => {
   if (!imageUuid || !imageExtension) {
     return null;
@@ -50,7 +45,6 @@ const createPhotoLinkFromSearch = (imageUuid?: string, imageExtension?: string):
   };
 };
 
-// Type guards для проверки типа данных
 const isBookData = (data: any): data is SearchBookData => {
   return data && typeof data === 'object' && 'title' in data && 'authorIds' in data;
 };
@@ -72,7 +66,6 @@ const isAuthorData = (data: any): data is SearchAuthorData => {
 };
 
 export const searchAPI = {
-  // Основной поиск (POST метод с form-urlencoded)
   search: async (params: SearchParams) => {
     const formData = toFormUrlEncoded(params);
     const response = await searchApi.post<SearchResponse>('/v1/search/query', formData);
@@ -81,7 +74,6 @@ export const searchAPI = {
     const total = response.data.data.total || 0;
     const limit = params.Limit || 10;
 
-    // Разделяем результаты по типам
     const books: Book[] = [];
     const users: User[] = [];
     const collections: Collection[] = [];
@@ -148,7 +140,6 @@ export const searchAPI = {
     };
   },
 
-  // Новая функция для загрузки жанров
   fetchGenres: async (limit: number = 50) => {
     try {
       const params = {
@@ -212,7 +203,6 @@ export const searchAPI = {
     }
   },
 
-  // Поиск жанров
   searchGenres: async (query: string, limit: number = 10): Promise<Array<{ id: number, name: string }>> => {
     try {
       const params = {

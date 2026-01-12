@@ -34,7 +34,6 @@ const initialState: PopularState = {
   },
 };
 
-// Асинхронные thunks
 export const fetchPopularBooks = createAsyncThunk(
   'popular/fetchBooks',
   async (limit: number = 12, { rejectWithValue }) => {
@@ -96,7 +95,6 @@ const popularSlice = createSlice({
   },
   extraReducers: (builder) => {
     builder
-      // Books
       .addCase(fetchPopularBooks.pending, (state) => {
         state.loading.books = true;
         state.error.books = null;
@@ -110,7 +108,6 @@ const popularSlice = createSlice({
         state.error.books = action.payload as string;
       })
       
-      // Collections
       .addCase(fetchPopularCollections.pending, (state) => {
         state.loading.collections = true;
         state.error.collections = null;
@@ -124,7 +121,6 @@ const popularSlice = createSlice({
         state.error.collections = action.payload as string;
       })
       
-      // Users
       .addCase(fetchPopularUsers.pending, (state) => {
         state.loading.users = true;
         state.error.users = null;

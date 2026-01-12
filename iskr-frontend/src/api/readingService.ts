@@ -29,7 +29,6 @@ export interface AddProgressRequest {
 }
 
 export const readingService = {
-  // Получение текущего статуса чтения книги
   getReadingStatus: async (bookId: number): Promise<ReadingStatusResponse | null> => {
     try {
       const response = await axios.get<ApiResponse<ReadingStatusResponse>>(
@@ -51,7 +50,6 @@ export const readingService = {
     }
   },
 
-  // Создание статуса чтения
   createReadingStatus: async (bookId: number, readingStatus: ReadingStatusType): Promise<ReadingStatusResponse> => {
     const response = await axios.post<ApiResponse<ReadingStatusResponse>>(
       `${OAPI_BASE_URL}/v1/reading/status`,
@@ -65,7 +63,6 @@ export const readingService = {
     throw new Error(response.data.data.message || 'Не удалось создать статус чтения');
   },
 
-  // Обновление статуса чтения
   updateReadingStatus: async (bookId: number, readingStatus: ReadingStatusType): Promise<ReadingStatusResponse> => {
     const response = await axios.put<ApiResponse<ReadingStatusResponse>>(
       `${OAPI_BASE_URL}/v1/reading/status`,
@@ -80,7 +77,6 @@ export const readingService = {
     throw new Error(response.data.data.message || 'Не удалось обновить статус чтения');
   },
 
-  // Добавление прогресса чтения
   addReadingProgress: async (bookId: number, pageRead: number): Promise<ReadingStatusResponse> => {
     const response = await axios.post<ApiResponse<ReadingStatusResponse>>(
       `${OAPI_BASE_URL}/v1/reading/status/add-progress`,
