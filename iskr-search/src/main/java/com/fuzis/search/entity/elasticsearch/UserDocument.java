@@ -56,7 +56,6 @@ public class UserDocument extends BaseIndexDocument {
             doc.setNickname(user.getProfile().getNickname());
             doc.setEmail(user.getProfile().getEmail());
 
-            // Данные изображения из профиля
             if (user.getProfile().getUserImglId() != null &&
                     user.getProfile().getUserImglId().getImageData() != null) {
                 doc.setImageUuid(user.getProfile().getUserImglId().getImageData().getUuid());

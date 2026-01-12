@@ -26,7 +26,7 @@ public class ImageService {
             "image/jpeg", "image/png", "image/gif", "image/webp", "image/bmp"
     );
 
-    private static final long MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB
+    private static final long MAX_FILE_SIZE = 15 * 1024 * 1024; 
 
     private final ImageDataRepository imageDataRepository;
     private final ImageLinkRepository imageLinkRepository;
@@ -54,29 +54,23 @@ public class ImageService {
     }
 
     public ChangeDTO<ImageLink> uploadImage(MultipartFile file, Integer uploaderId) {
-        // Проверка на пустой файл
         if (file.isEmpty()) {
             return new ChangeDTO<>(State.Fail_BadData, "File is empty", null);
         }
-
-        // Проверка размера файла
         if (file.getSize() > MAX_FILE_SIZE) {
             return new ChangeDTO<>(State.Fail_BadData, "File size exceeds 15 MB limit", null);
         }
 
-        // Проверка MIME-типа
         String mimeType = file.getContentType();
         if (mimeType == null || !ALLOWED_MIME_TYPES.contains(mimeType.toLowerCase())) {
             return new ChangeDTO<>(State.Fail_BadData, "Unsupported file type. Allowed: JPEG, PNG, GIF, WebP, BMP", null);
         }
 
-        // Получение расширения файла
         String originalFilename = file.getOriginalFilename();
         String extension = "";
         if (originalFilename != null && originalFilename.contains(".")) {
             extension = originalFilename.substring(originalFilename.lastIndexOf(".") + 1).toLowerCase();
         } else {
-            // Если расширение не указано, определяем по MIME-типу
             extension = getExtensionFromMimeType(mimeType);
             if (extension.isEmpty()) {
                 return new ChangeDTO<>(State.Fail_BadData, "Cannot determine file extension", null);
@@ -84,15 +78,12 @@ public class ImageService {
         }
 
         try {
-            // Генерация UUID для имени файла
             String uuid = tokenGenerator.getTokenKey();
             String filename = uuid + "." + extension;
             Path filePath = uploadDir.resolve(filename);
 
-            // Сохранение файла на диск
             Files.copy(file.getInputStream(), filePath, StandardCopyOption.REPLACE_EXISTING);
 
-            // Сохранение метаданных в БД
             ImageData imageData = ImageData.builder()
                     .uuid(uuid)
                     .uploaderId(uploaderId)
@@ -103,7 +94,6 @@ public class ImageService {
 
             imageData = imageDataRepository.save(imageData);
 
-            // Создание записи в IMAGE_LINKS
             ImageLink imageLink = ImageLink.builder()
                     .imageData(imageData)
                     .build();

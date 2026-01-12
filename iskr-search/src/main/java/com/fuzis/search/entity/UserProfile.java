@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.time.ZonedDateTime;
 
-// UserProfile.java
 @Entity
 @Table(name = "USER_PROFILES", schema = "ACCOUNTS")
 @Data

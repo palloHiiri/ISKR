@@ -5,7 +5,6 @@ import lombok.*;
 
 import java.time.ZonedDateTime;
 
-// User.java - обновляем с учетом профиля
 @Entity
 @Table(name = "USERS", schema = "ACCOUNTS")
 @Data

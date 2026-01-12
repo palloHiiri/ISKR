@@ -5,7 +5,6 @@ path:
 
 cluster.name: "docker-cluster"
 network.host: 0.0.0.0
-#cluster.initial_master_nodes: ["elastic-1"]
 node.name: elastic-1
 discovery.type: single-node
 discovery.seed_hosts: []

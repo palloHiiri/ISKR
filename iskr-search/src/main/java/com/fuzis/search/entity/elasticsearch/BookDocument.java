@@ -84,21 +84,18 @@ public class BookDocument extends BaseIndexDocument {
         doc.setAverageRating(book.getAverageRating());
         doc.setCollectionsCount(book.getCollectionsCount());
 
-        // Жанры
         if (book.getGenres() != null) {
             doc.setGenreIds(book.getGenres().stream()
                     .map(Genre::getGenreId)
                     .collect(Collectors.toList()));
         }
 
-        // Авторы
         if (book.getAuthors() != null) {
             doc.setAuthorIds(book.getAuthors().stream()
                     .map(Author::getAuthorId)
                     .collect(Collectors.toList()));
         }
 
-        // Данные изображения
         if (book.getPhotoLink() != null && book.getPhotoLink().getImageData() != null) {
             doc.setImageUuid(book.getPhotoLink().getImageData().getUuid());
             doc.setImageExtension(book.getPhotoLink().getImageData().getExtension());
@@ -136,14 +133,12 @@ public class BookDocument extends BaseIndexDocument {
 
         doc.setData(data);
 
-        // Формируем searchText
         StringBuilder searchTextBuilder = new StringBuilder();
         if (book.getTitle() != null) searchTextBuilder.append(book.getTitle()).append(" ");
         if (book.getSubtitle() != null) searchTextBuilder.append(book.getSubtitle()).append(" ");
         if (book.getDescription() != null) searchTextBuilder.append(book.getDescription()).append(" ");
         if (book.getIsbn() != null) searchTextBuilder.append(book.getIsbn()).append(" ");
 
-        // Авторы
         if (book.getAuthors() != null) {
             for (Author author : book.getAuthors()) {
                 if (author.getName() != null) {
@@ -155,7 +150,6 @@ public class BookDocument extends BaseIndexDocument {
             }
         }
 
-        // Жанры
         if (book.getGenres() != null) {
             for (Genre genre : book.getGenres()) {
                 if (genre.getName() != null) {

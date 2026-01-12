@@ -56,14 +56,9 @@ public class AuthorDocument extends BaseIndexDocument {
         data.put("realName", author.getRealName());
         data.put("description", author.getDescription());
 
-        // Временное решение: не кладем birthDate в data
-        // if (author.getBirthDate() != null) {
-        //     data.put("birthDate", author.getBirthDate().format(DateTimeFormatter.ISO_LOCAL_DATE));
-        // }
 
         doc.setData(data);
 
-        // Собираем searchText
         StringBuilder searchTextBuilder = new StringBuilder();
         if (author.getName() != null) {
             searchTextBuilder.append(author.getName()).append(" ");

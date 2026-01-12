@@ -17,7 +17,6 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
             nativeQuery = true)
     List<BookCollection> findAllPublicOrderedById();
 
-    // Метод для получения коллекций с изображениями
     @Query("SELECT bc FROM BookCollection bc " +
             "LEFT JOIN FETCH bc.photoLink pl " +
             "LEFT JOIN FETCH pl.imageData " +
@@ -25,7 +24,6 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
             "ORDER BY bc.bcolsId")
     Page<BookCollection> findAllPublicWithImages(Pageable pageable);
 
-    // Метод для получения всех ID публичных коллекций
     @Query("SELECT bc.bcolsId FROM BookCollection bc " +
             "WHERE bc.confidentiality = 'Public' " +
             "ORDER BY bc.bcolsId")

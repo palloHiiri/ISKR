@@ -30,7 +30,6 @@ public class SearchController {
             @RequestParam(required = false) List<String> types,
             @RequestParam(required = false) Integer genreId) {
 
-        // Если types не указаны, устанавливаем по умолчанию: user, collection, book
         if (types == null) {
             types = Arrays.asList("user", "collection", "book");
         }

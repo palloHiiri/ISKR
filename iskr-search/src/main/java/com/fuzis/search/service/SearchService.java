@@ -84,14 +84,11 @@ public class SearchService {
             boolQueryBuilder.must(multiMatchBuilder.build()._toQuery());
         }
 
-        // Если указан genreId, добавляем фильтр по жанру
         if (request.getGenreId() != null) {
-            // Терм-запрос для фильтрации по ID жанра
             TermsQuery.Builder genreTermsBuilder = new TermsQuery.Builder()
                     .field("genreIds")
                     .terms(t -> t.value(List.of(FieldValue.of(request.getGenreId()))));
 
-            // Ограничиваем поиск только книгами
             TermsQuery.Builder typeTermsBuilder = new TermsQuery.Builder()
                     .field("type")
                     .terms(t -> t.value(List.of(FieldValue.of("book"))));
@@ -99,7 +96,6 @@ public class SearchService {
             boolQueryBuilder.filter(genreTermsBuilder.build()._toQuery());
             boolQueryBuilder.filter(typeTermsBuilder.build()._toQuery());
         } else {
-            // Старая логика фильтрации по типам (если не указан genreId)
             if (request.getTypes() != null && !request.getTypes().isEmpty()) {
                 TermsQuery.Builder termsBuilder = new TermsQuery.Builder()
                         .field("type")

@@ -60,7 +60,6 @@ public class BookCollectionDocument extends BaseIndexDocument {
         doc.setLikesCount(collection.getLikesCount());
         doc.setBookCount(collection.getBookCount());
 
-        // Данные изображения
         if (collection.getPhotoLink() != null && collection.getPhotoLink().getImageData() != null) {
             doc.setImageUuid(collection.getPhotoLink().getImageData().getUuid());
             doc.setImageExtension(collection.getPhotoLink().getImageData().getExtension());

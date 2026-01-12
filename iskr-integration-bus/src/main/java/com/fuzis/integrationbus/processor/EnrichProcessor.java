@@ -23,7 +23,6 @@ public class EnrichProcessor implements Processor {
 
     @Override
     public void process(Exchange exchange) throws Exception {
-        //unmarshallProcessor.process(exchange);
         try {
             Object currentBody = exchange.getIn().getBody();
             Boolean noMeta = exchange.getIn().getHeader("X-No-Meta", Boolean.class);

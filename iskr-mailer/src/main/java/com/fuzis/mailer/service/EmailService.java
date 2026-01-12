@@ -76,7 +76,6 @@ public class EmailService {
             variables.put("url", url);
         }
 
-        // Добавляем дополнительные переменные из content если они есть
         if (emailDTO.getContent() instanceof Map) {
             variables.putAll((Map<? extends String, ?>) emailDTO.getContent());
         }

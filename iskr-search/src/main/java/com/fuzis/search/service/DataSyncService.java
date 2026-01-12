@@ -134,14 +134,12 @@ public class DataSyncService {
                         .map(User::getUserId)
                         .collect(Collectors.toList());
 
-                // Загружаем количество подписчиков
                 List<Object[]> subscribersData = subscriberRepository.findSubscribersCountByUserIds(userIds);
                 Map<Integer, Long> subscribersMap = new HashMap<>();
                 for (Object[] data : subscribersData) {
                     subscribersMap.put((Integer) data[0], (Long) data[1]);
                 }
 
-                // Устанавливаем количество подписчиков для каждого пользователя
                 for (User user : users) {
                     user.setSubscribersCount(subscribersMap.getOrDefault(user.getUserId(), 0L));
                 }
@@ -179,12 +177,10 @@ public class DataSyncService {
             List<Integer> bookIds = bookIdsPage.getContent();
 
             if (!bookIds.isEmpty()) {
-                // 1. Загружаем книги с изображениями
                 List<Book> booksWithImages = bookRepository.findBooksWithImagesByIds(bookIds);
                 Map<Integer, Book> booksMap = booksWithImages.stream()
                         .collect(Collectors.toMap(Book::getBookId, book -> book));
 
-                // 2. Загружаем жанры отдельно
                 List<Book> booksWithGenres = bookRepository.findBooksWithGenresByIds(bookIds);
                 for (Book bookWithGenres : booksWithGenres) {
                     Book book = booksMap.get(bookWithGenres.getBookId());
@@ -193,7 +189,6 @@ public class DataSyncService {
                     }
                 }
 
-                // 3. Загружаем авторов отдельно
                 List<Book> booksWithAuthors = bookRepository.findBooksWithAuthorsByIds(bookIds);
                 for (Book bookWithAuthors : booksWithAuthors) {
                     Book book = booksMap.get(bookWithAuthors.getBookId());
@@ -202,28 +197,24 @@ public class DataSyncService {
                     }
                 }
 
-                // 4. Загружаем средние рейтинги
                 List<Object[]> averageRatings = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
                 Map<Integer, Double> ratingsMap = new HashMap<>();
                 for (Object[] rating : averageRatings) {
                     ratingsMap.put((Integer) rating[0], (Double) rating[1]);
                 }
 
-                // 5. Загружаем количество коллекций
                 List<Object[]> collectionsData = booksBookCollectionsRepository.findCollectionsCountByBookIds(bookIds);
                 Map<Integer, Long> collectionsMap = new HashMap<>();
                 for (Object[] data : collectionsData) {
                     collectionsMap.put((Integer) data[0], (Long) data[1]);
                 }
 
-                // 6. Устанавливаем дополнительные данные для книг
                 List<Book> books = new ArrayList<>(booksMap.values());
                 for (Book book : books) {
                     book.setAverageRating(ratingsMap.getOrDefault(book.getBookId(), 0.0));
                     book.setCollectionsCount(collectionsMap.getOrDefault(book.getBookId(), 0L));
                 }
 
-                // 7. Сортируем книги по ID для сохранения порядка
                 books.sort(Comparator.comparing(Book::getBookId));
 
                 List<BaseIndexDocument> documents = books.stream()
@@ -259,16 +250,13 @@ public class DataSyncService {
             List<Integer> collectionIds = collectionIdsPage.getContent();
 
             if (!collectionIds.isEmpty()) {
-                // 1. Загружаем коллекции с изображениями
                 List<BookCollection> collections = collectionRepository.findAllById(collectionIds);
 
-                // Загружаем изображения отдельно
                 Pageable imagesPageable = Pageable.unpaged();
                 Page<BookCollection> collectionsWithImages = collectionRepository.findAllPublicWithImages(imagesPageable);
                 Map<Integer, BookCollection> collectionsWithImagesMap = collectionsWithImages.getContent().stream()
                         .collect(Collectors.toMap(BookCollection::getBcolsId, collection -> collection));
 
-                // Устанавливаем изображения для коллекций
                 for (BookCollection collection : collections) {
                     BookCollection collectionWithImage = collectionsWithImagesMap.get(collection.getBcolsId());
                     if (collectionWithImage != null) {
@@ -276,27 +264,23 @@ public class DataSyncService {
                     }
                 }
 
-                // 2. Загружаем количество лайков
                 List<Object[]> likesData = likedCollectionRepository.findLikesCountByCollectionIds(collectionIds);
                 Map<Integer, Long> likesMap = new HashMap<>();
                 for (Object[] data : likesData) {
                     likesMap.put((Integer) data[0], (Long) data[1]);
                 }
 
-                // 3. Загружаем количество книг в коллекциях
                 List<Object[]> booksData = booksBookCollectionsRepository.findBookCountByCollectionIds(collectionIds);
                 Map<Integer, Integer> booksMap = new HashMap<>();
                 for (Object[] data : booksData) {
                     booksMap.put((Integer) data[0], ((Long) data[1]).intValue());
                 }
 
-                // 4. Устанавливаем дополнительные данные для коллекций
                 for (BookCollection collection : collections) {
                     collection.setLikesCount(likesMap.getOrDefault(collection.getBcolsId(), 0L));
                     collection.setBookCount(booksMap.getOrDefault(collection.getBcolsId(), 0));
                 }
 
-                // 5. Сортируем коллекции по ID для сохранения порядка
                 collections.sort(Comparator.comparing(BookCollection::getBcolsId));
 
                 List<BaseIndexDocument> documents = collections.stream()
