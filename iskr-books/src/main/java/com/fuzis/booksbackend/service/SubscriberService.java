@@ -33,14 +33,12 @@ public class SubscriberService {
         try {
             log.info("User {} subscribing to user {}", userId, userOnId);
 
-            // Check if user is trying to subscribe to themselves
             if (userId.equals(userOnId)) {
                 log.warn("User {} attempted to subscribe to themselves", userId);
                 return new ChangeDTO<>(State.Fail_BadData,
                         "Cannot subscribe to yourself", null);
             }
 
-            // Check if users exist
             Optional<User> subsUserOpt = userRepository.findById(userId);
             Optional<User> subsUserOnOpt = userRepository.findById(userOnId);
 
@@ -50,14 +48,12 @@ public class SubscriberService {
                         "One or both users not found", null);
             }
 
-            // Check if subscription already exists
             if (subscriberRepository.existsBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get())) {
                 log.warn("Subscription already exists: user {} -> user {}", userId, userOnId);
                 return new ChangeDTO<>(State.Fail_Conflict,
                         "Already subscribed to this user", null);
             }
 
-            // Create subscription
             Subscriber subscriber = Subscriber.builder()
                     .subsUser(subsUserOpt.get())
                     .subsUserOn(subsUserOnOpt.get())
@@ -66,7 +62,6 @@ public class SubscriberService {
             Subscriber savedSubscriber = subscriberRepository.save(subscriber);
             log.info("Subscription created successfully: user {} -> user {}", userId, userOnId);
 
-            // Возвращаем только необходимые данные, чтобы избежать циклической зависимости
             SubscriptionResultDTO result = new SubscriptionResultDTO(
                     savedSubscriber.getSubsId(),
                     userId,
@@ -91,7 +86,6 @@ public class SubscriberService {
         try {
             log.info("User {} unsubscribing from user {}", userId, userOnId);
 
-            // Check if users exist
             Optional<User> subsUserOpt = userRepository.findById(userId);
             Optional<User> subsUserOnOpt = userRepository.findById(userOnId);
 
@@ -101,18 +95,15 @@ public class SubscriberService {
                         "One or both users not found", null);
             }
 
-            // Check if subscription exists
             if (!subscriberRepository.existsBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get())) {
                 log.warn("Subscription not found: user {} -> user {}", userId, userOnId);
                 return new ChangeDTO<>(State.Fail_NotFound,
                         "Subscription not found", null);
             }
 
-            // Delete subscription
             subscriberRepository.deleteBySubsUserAndSubsUserOn(subsUserOpt.get(), subsUserOnOpt.get());
             log.info("Subscription deleted successfully: user {} -> user {}", userId, userOnId);
 
-            // Возвращаем простой ответ об успехе
             Map<String, Object> result = new HashMap<>();
             result.put("message", "Successfully unsubscribed");
             result.put("userId", userId);
@@ -142,7 +133,6 @@ public class SubscriberService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Subscriber> subscriptionsPage = subscriberRepository.findBySubsUser_UserId(userId, pageable);
 
-            // Create response
             Map<String, Object> response = new HashMap<>();
             response.put("userId", userId);
             response.put("page", page);
@@ -182,7 +172,6 @@ public class SubscriberService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Subscriber> subscribersPage = subscriberRepository.findBySubsUserOn_UserId(userId, pageable);
 
-            // Create response
             Map<String, Object> response = new HashMap<>();
             response.put("userId", userId);
             response.put("page", page);

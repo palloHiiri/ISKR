@@ -24,7 +24,6 @@ public interface CollectionViewPrivilegeRepository extends JpaRepository<Collect
     void deleteByCollectionIdAndUserId(@Param("collectionId") Integer collectionId,
                                        @Param("userId") Integer userId);
 
-    // Новый метод: получение всех CVP для коллекции
     @Query("SELECT cvp FROM CollectionViewPrivilege cvp WHERE cvp.bcolsId = :collectionId")
     List<CollectionViewPrivilege> findByBcolsId(@Param("collectionId") Integer collectionId);
 }

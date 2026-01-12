@@ -14,14 +14,13 @@ public class CollectionRequestDTO {
     private String description;
 
     @NotNull(message = "Confidentiality is required", groups = {CreateValidation.class})
-    private String confidentiality; // "Public", "Private"
+    private String confidentiality; 
 
     @NotNull(message = "Collection type is required", groups = {CreateValidation.class})
-    private String collectionType; // "Standard", "Liked", "Wishlist"
+    private String collectionType; 
 
     private Integer photoLink;
 
-    // Группы для валидации
     public interface CreateValidation {}
     public interface UpdateValidation {}
 }

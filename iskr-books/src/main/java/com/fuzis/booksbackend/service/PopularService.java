@@ -35,30 +35,24 @@ public class PopularService {
                 limit = 10;
             }
 
-            // Получаем популярных пользователей по количеству подписчиков
             List<Object[]> popularUserResults = subscriberRepository.findPopularUsers();
 
-            // Ограничиваем количество
             List<Object[]> limitedResults = popularUserResults.stream()
                     .limit(limit)
                     .collect(Collectors.toList());
 
-            // Извлекаем ID пользователей
             List<Integer> userIds = limitedResults.stream()
                     .map(row -> (Integer) row[0])
                     .collect(Collectors.toList());
 
-            // Получаем пользователей с профилями
             List<User> users = userRepository.findByIdsWithProfiles(userIds);
 
-            // Получаем ID изображений
             List<Integer> imageIds = users.stream()
                     .map(u -> u.getProfile() != null ? u.getProfile().getUserImglId() : null)
                     .filter(Objects::nonNull)
                     .map(ImageLink::getImglId)
                     .collect(Collectors.toList());
 
-            // Получаем изображения с данными
             Map<Integer, ImageLink> imageLinksMap;
             if (!imageIds.isEmpty()) {
                 List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(imageIds);
@@ -68,14 +62,12 @@ public class PopularService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем Map для быстрого доступа к количеству подписчиков
             Map<Integer, Long> subscribersCountMap = limitedResults.stream()
                     .collect(Collectors.toMap(
                             row -> (Integer) row[0],
                             row -> (Long) row[1]
                     ));
 
-            // Преобразуем в DTO
             List<PopularUserDTO> popularUsers = users.stream()
                     .map(user -> {
                         PopularUserDTO dto = new PopularUserDTO();
@@ -87,7 +79,6 @@ public class PopularService {
                             dto.setEmail(user.getProfile().getEmail());
                             dto.setStatus(user.getProfile().getStatus());
 
-                            // Добавляем изображение профиля
                             ImageLink profileImageLink = user.getProfile().getUserImglId();
                             if (profileImageLink != null) {
                                 ImageLink fullImageLink = imageLinksMap.get(profileImageLink.getImglId());
@@ -114,7 +105,6 @@ public class PopularService {
                     })
                     .collect(Collectors.toList());
 
-            // Сортируем по количеству подписчиков (убывающе)
             popularUsers.sort((a, b) -> Long.compare(b.getSubscribersCount(), a.getSubscribersCount()));
 
             Map<String, Object> response = new HashMap<>();
@@ -148,23 +138,18 @@ public class PopularService {
                 limit = 10;
             }
 
-            // Получаем популярные коллекции по количеству лайков
             List<Object[]> popularCollectionResults = likedCollectionRepository.findPopularCollections();
 
-            // Ограничиваем количество
             List<Object[]> limitedResults = popularCollectionResults.stream()
                     .limit(limit)
                     .collect(Collectors.toList());
 
-            // Извлекаем ID коллекций
             List<Integer> collectionIds = limitedResults.stream()
                     .map(row -> (Integer) row[0])
                     .collect(Collectors.toList());
 
-            // Получаем коллекции с фотографиями
             List<BookCollection> collections = bookCollectionRepository.findByIdsWithPhotoLinks(collectionIds);
 
-            // Получаем количество книг в каждой коллекции
             List<Object[]> bookCountsResults = booksBookCollectionsRepository.findBookCountsByCollectionIds(collectionIds);
             Map<Integer, Long> bookCountsMap = bookCountsResults.stream()
                     .collect(Collectors.toMap(
@@ -172,26 +157,22 @@ public class PopularService {
                             row -> (Long) row[1]
                     ));
 
-            // Получаем ID владельцев
             List<Integer> ownerIds = collections.stream()
                     .map(BookCollection::getOwner)
                     .filter(Objects::nonNull)
                     .map(User::getUserId)
                     .collect(Collectors.toList());
 
-            // Получаем владельцев с профилями
             List<User> owners = userRepository.findByIdsWithProfiles(ownerIds);
             Map<Integer, User> ownersMap = owners.stream()
                     .collect(Collectors.toMap(User::getUserId, u -> u));
 
-            // Получаем ID изображений
             List<Integer> imageIds = collections.stream()
                     .map(BookCollection::getPhotoLink)
                     .filter(Objects::nonNull)
                     .map(ImageLink::getImglId)
                     .collect(Collectors.toList());
 
-            // Получаем изображения с данными
             Map<Integer, ImageLink> imageLinksMap;
             if (!imageIds.isEmpty()) {
                 List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(imageIds);
@@ -201,14 +182,12 @@ public class PopularService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем Map для быстрого доступа к количеству лайков
             Map<Integer, Long> likesCountMap = limitedResults.stream()
                     .collect(Collectors.toMap(
                             row -> (Integer) row[0],
                             row -> (Long) row[1]
                     ));
 
-            // Преобразуем в DTO
             List<PopularCollectionDTO> popularCollections = collections.stream()
                     .map(collection -> {
                         PopularCollectionDTO dto = new PopularCollectionDTO();
@@ -217,7 +196,6 @@ public class PopularService {
                         dto.setDescription(collection.getDescription());
                         dto.setCollectionType(collection.getCollectionType().name());
 
-                        // Добавляем информацию о владельце
                         User owner = collection.getOwner();
                         if (owner != null) {
                             dto.setOwnerId(owner.getUserId());
@@ -227,10 +205,8 @@ public class PopularService {
                             }
                         }
 
-                        // Добавляем количество книг в коллекции
                         dto.setBookCount(bookCountsMap.getOrDefault(collection.getBcolsId(), 0L).intValue());
 
-                        // Добавляем изображение коллекции
                         ImageLink photoLink = collection.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -256,7 +232,6 @@ public class PopularService {
                     })
                     .collect(Collectors.toList());
 
-            // Сортируем по количеству лайков (убывающе)
             popularCollections.sort((a, b) -> Long.compare(b.getLikesCount(), a.getLikesCount()));
 
             Map<String, Object> response = new HashMap<>();
@@ -290,23 +265,18 @@ public class PopularService {
                 limit = 10;
             }
 
-            // Получаем популярные книги по количеству добавлений в коллекции
             List<Object[]> popularBookResults = booksBookCollectionsRepository.findPopularBooks();
 
-            // Ограничиваем количество
             List<Object[]> limitedResults = popularBookResults.stream()
                     .limit(limit)
                     .collect(Collectors.toList());
 
-            // Извлекаем ID книг
             List<Integer> bookIds = limitedResults.stream()
                     .map(row -> (Integer) row[0])
                     .collect(Collectors.toList());
 
-            // Получаем книги с авторами и жанрами
             List<Book> books = bookRepository.findAllById(bookIds);
 
-            // Получаем средние рейтинги для книг
             List<Object[]> averageRatingsResults = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
             Map<Integer, Double> averageRatingsMap = averageRatingsResults.stream()
                     .collect(Collectors.toMap(
@@ -314,14 +284,12 @@ public class PopularService {
                             row -> (Double) row[1]
                     ));
 
-            // Получаем ID изображений
             List<Integer> imageIds = books.stream()
                     .map(Book::getPhotoLink)
                     .filter(Objects::nonNull)
                     .map(ImageLink::getImglId)
                     .collect(Collectors.toList());
 
-            // Получаем изображения с данными
             Map<Integer, ImageLink> imageLinksMap;
             if (!imageIds.isEmpty()) {
                 List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(imageIds);
@@ -331,14 +299,12 @@ public class PopularService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем Map для быстрого доступа к количеству коллекций
             Map<Integer, Long> collectionsCountMap = limitedResults.stream()
                     .collect(Collectors.toMap(
                             row -> (Integer) row[0],
                             row -> (Long) row[1]
                     ));
 
-            // Преобразуем в DTO
             List<PopularBookDTO> popularBooks = books.stream()
                     .map(book -> {
                         PopularBookDTO dto = new PopularBookDTO();
@@ -348,7 +314,6 @@ public class PopularService {
                         dto.setIsbn(book.getIsbn());
                         dto.setPageCnt(book.getPageCnt());
 
-                        // Добавляем средний рейтинг (округленный до 2 знаков после запятой)
                         Double avgRating = averageRatingsMap.get(book.getBookId());
                         if (avgRating != null) {
                             dto.setAverageRating(Math.round(avgRating * 100.0) / 100.0);
@@ -356,7 +321,6 @@ public class PopularService {
                             dto.setAverageRating(null);
                         }
 
-                        // Добавляем изображение книги
                         ImageLink photoLink = book.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -382,7 +346,6 @@ public class PopularService {
                     })
                     .collect(Collectors.toList());
 
-            // Сортируем по количеству коллекций (убывающе)
             popularBooks.sort((a, b) -> Long.compare(b.getCollectionsCount(), a.getCollectionsCount()));
 
             Map<String, Object> response = new HashMap<>();

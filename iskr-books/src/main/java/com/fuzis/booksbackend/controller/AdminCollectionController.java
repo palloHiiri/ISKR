@@ -18,9 +18,8 @@ public class AdminCollectionController {
     private final CollectionService collectionService;
     private final HttpUtil httpUtil;
 
-    private static final Integer ADMIN_USER_ID = null; // Константа для администратора
+    private static final Integer ADMIN_USER_ID = null; 
 
-    // 1. Получить детали коллекции (без проверки прав, userId = -1 для администратора)
     @GetMapping("/{collectionId}")
     public ResponseEntity<ChangeDTO<Object>> getCollectionDetail(
             @PathVariable @Min(1) Integer collectionId) {
@@ -29,7 +28,6 @@ public class AdminCollectionController {
         );
     }
 
-    // 2. Получить книги в коллекции (без проверки прав, userId = -1 для администратора)
     @GetMapping("/{collectionId}/books")
     public ResponseEntity<ChangeDTO<Object>> getCollectionBooks(
             @PathVariable @Min(1) Integer collectionId,

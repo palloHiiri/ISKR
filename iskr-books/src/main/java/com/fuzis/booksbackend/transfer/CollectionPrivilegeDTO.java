@@ -13,5 +13,5 @@ public class CollectionPrivilegeDTO {
     private Integer userId;
     private String username;
     private String nickname;
-    private String status; // "Allowed", "Pending", "Denied"
+    private String status; 
 }

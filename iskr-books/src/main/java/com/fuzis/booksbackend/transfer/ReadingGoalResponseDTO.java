@@ -16,7 +16,7 @@ public class ReadingGoalResponseDTO {
     private LocalDateTime startDate;
     private Integer amount;
     private String goalType;
-    private Integer currentProgress = 0; // Добавляем инициализацию
+    private Integer currentProgress = 0; 
     private Boolean isCompleted;
     private LocalDateTime endDate;
 }

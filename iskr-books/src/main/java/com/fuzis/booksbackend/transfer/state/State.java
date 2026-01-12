@@ -6,7 +6,7 @@ public enum State {
     Fail_BadData,
     Fail_NotFound,
     Fail_Conflict,
-    Fail_Forbidden, // Добавляем статус для запрета доступа
+    Fail_Forbidden, 
     Fail_Not_Implemented,
     Fail_Expired
 }

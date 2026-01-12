@@ -20,25 +20,20 @@ public interface BookReviewRepository extends JpaRepository<BookReview, Integer>
             "GROUP BY br.book.bookId")
     List<Object[]> findAverageRatingsByBookIds(@Param("bookIds") List<Integer> bookIds);
 
-    // Явный запрос для получения среднего рейтинга по одной книге
     @Query("SELECT AVG(br.score) FROM BookReview br WHERE br.book.bookId = :bookId")
     Optional<Double> findAverageRatingByBookId(@Param("bookId") Integer bookId);
 
-    // Получение всех отзывов по списку ID книг
     List<BookReview> findByBook_BookIdIn(List<Integer> bookIds);
 
-    // Получение отзывов с пагинацией
     @Query("SELECT br FROM BookReview br " +
             "LEFT JOIN FETCH br.user " +
             "WHERE br.book.bookId = :bookId")
     Page<BookReview> findByBook_BookId(@Param("bookId") Integer bookId, Pageable pageable);
 
-    // Подсчет количества отзывов для книги
     @Query("SELECT COUNT(br) FROM BookReview br WHERE br.book.bookId = :bookId")
     long countByBookId(@Param("bookId") Integer bookId);
-    // Новый метод для поиска отзыва по userId и bookId
+
     Optional<BookReview> findByUser_UserIdAndBook_BookId(Integer userId, Integer bookId);
 
-    // Метод для проверки существования отзыва
     boolean existsByUser_UserIdAndBook_BookId(Integer userId, Integer bookId);
 }

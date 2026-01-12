@@ -12,5 +12,5 @@ public class UserSubscriptionDTO {
     private String username;
     private String nickname;
     private ImageLinkDTO profileImage;
-    private Long subscribersCount; // Новое поле: количество подписчиков пользователя
+    private Long subscribersCount; 
 }

@@ -23,14 +23,12 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
 
     long countByOwner_UserId(Integer userId);
 
-    // Получение коллекции с владельцем и фото
     @Query("SELECT bc FROM BookCollection bc " +
             "LEFT JOIN FETCH bc.owner " +
             "LEFT JOIN FETCH bc.photoLink " +
             "WHERE bc.bcolsId = :id")
     Optional<BookCollection> findByIdWithOwnerAndPhoto(@Param("id") Integer id);
 
-    // Получение публичных коллекций
     @Query("SELECT bc FROM BookCollection bc WHERE bc.confidentiality = 'Public'")
     Page<BookCollection> findPublicCollections(Pageable pageable);
 
@@ -38,13 +36,11 @@ public interface BookCollectionRepository extends JpaRepository<BookCollection, 
             "FROM BookCollection bc WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
     boolean existsWishlistByUserId(@Param("userId") Integer userId);
 
-    // Получение вишлиста пользователя
     @Query("SELECT bc FROM BookCollection bc " +
             "LEFT JOIN FETCH bc.photoLink " +
             "WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
     Optional<BookCollection> findWishlistByUserId(@Param("userId") Integer userId);
 
-    // Получение вишлистов пользователя (на случай нескольких, но не должно быть)
     @Query("SELECT bc FROM BookCollection bc WHERE bc.owner.userId = :userId AND bc.collectionType = 'Wishlist'")
     List<BookCollection> findWishlistsByUserId(@Param("userId") Integer userId);
 

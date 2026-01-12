@@ -10,5 +10,5 @@ public class BookReadingStatusRequestDTO {
     private Integer bookId;
 
     @NotBlank(message = "Reading status is required")
-    private String readingStatus; // "Planning", "Reading", "Delayed", "GaveUp", "Finished"
+    private String readingStatus; 
 }

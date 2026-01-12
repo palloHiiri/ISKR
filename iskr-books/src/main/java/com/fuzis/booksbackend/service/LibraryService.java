@@ -33,7 +33,6 @@ public class LibraryService {
         try {
             log.debug("Getting visible collections for user {}", userId);
 
-            // Получаем коллекции из функции БД
             List<Object[]> visibleCollections = libraryRepository.findVisibleCollectionsForUser(userId);
 
             if (visibleCollections.isEmpty()) {
@@ -45,15 +44,12 @@ public class LibraryService {
                         "No visible collections found", response);
             }
 
-            // Извлекаем ID коллекций
             List<Integer> collectionIds = visibleCollections.stream()
-                    .map(row -> (Integer) row[0]) // bcols_id - первый столбец
+                    .map(row -> (Integer) row[0])
                     .collect(Collectors.toList());
 
-            // Получаем полную информацию о коллекциях
             List<BookCollection> collections = bookCollectionRepository.findByIdsWithPhotoLinks(collectionIds);
 
-            // Получаем количество книг в каждой коллекции
             List<Object[]> bookCounts = booksBookCollectionsRepository.findBookCountsByCollectionIds(collectionIds);
             Map<Integer, Long> bookCountsMap = bookCounts.stream()
                     .collect(Collectors.toMap(
@@ -61,7 +57,6 @@ public class LibraryService {
                             row -> (Long) row[1]
                     ));
 
-            // Получаем владельцев
             List<Integer> ownerIds = collections.stream()
                     .map(bc -> bc.getOwner().getUserId())
                     .distinct()
@@ -70,7 +65,6 @@ public class LibraryService {
             Map<Integer, User> ownersMap = userRepository.findByIdsWithProfiles(ownerIds).stream()
                     .collect(Collectors.toMap(User::getUserId, u -> u));
 
-            // Получаем изображения коллекций
             List<Integer> imageIds = collections.stream()
                     .map(BookCollection::getPhotoLink)
                     .filter(Objects::nonNull)
@@ -86,7 +80,6 @@ public class LibraryService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем DTO
             List<LibraryCollectionDTO> collectionDTOs = collections.stream()
                     .map(collection -> {
                         LibraryCollectionDTO dto = new LibraryCollectionDTO();
@@ -96,7 +89,6 @@ public class LibraryService {
                         dto.setConfidentiality(collection.getConfidentiality().name());
                         dto.setBookCollectionType(collection.getCollectionType().name());
 
-                        // Владелец
                         User owner = collection.getOwner();
                         if (owner != null) {
                             dto.setOwnerId(owner.getUserId());
@@ -106,10 +98,8 @@ public class LibraryService {
                             }
                         }
 
-                        // Количество книг
                         dto.setBookCount(bookCountsMap.getOrDefault(collection.getBcolsId(), 0L));
 
-                        // Фото
                         ImageLink photoLink = collection.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -134,7 +124,6 @@ public class LibraryService {
                     })
                     .collect(Collectors.toList());
 
-            // Сортируем по ID, чтобы сохранить порядок из функции
             collectionDTOs.sort(Comparator.comparing(LibraryCollectionDTO::getBcolsId));
 
             Map<String, Object> response = new HashMap<>();
@@ -157,7 +146,6 @@ public class LibraryService {
         try {
             log.debug("Getting visible books for user {}", userId);
 
-            // Получаем книги из функции БД
             List<Object[]> visibleBooks = libraryRepository.findVisibleBooksForUser(userId);
 
             if (visibleBooks.isEmpty()) {
@@ -169,18 +157,12 @@ public class LibraryService {
                         "No visible books found", response);
             }
 
-            // Извлекаем ID книг
             List<Integer> bookIds = visibleBooks.stream()
-                    .map(row -> (Integer) row[0]) // book_id - первый столбец
+                    .map(row -> (Integer) row[0])
                     .collect(Collectors.toList());
 
-            // Получаем полную информацию о книгах с авторами и жанрами
             List<Book> books = bookRepository.findAllById(bookIds);
 
-            // Для получения авторов и жанров нужно использовать отдельный запрос
-            // или изменить текущую логику. Сначала получим книги, потом отдельно авторов и жанры.
-
-            // Получаем средние рейтинги
             List<Object[]> averageRatings = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
             Map<Integer, Double> averageRatingsMap = averageRatings.stream()
                     .collect(Collectors.toMap(
@@ -188,7 +170,6 @@ public class LibraryService {
                             row -> (Double) row[1]
                     ));
 
-            // Получаем количество коллекций для книг
             List<Object[]> collectionsCounts = bbcRepository.findBookCountsByCollectionIds(bookIds);
             Map<Integer, Long> collectionsCountMap = collectionsCounts.stream()
                     .collect(Collectors.toMap(
@@ -196,7 +177,6 @@ public class LibraryService {
                             row -> (Long) row[1]
                     ));
 
-            // Получаем изображения книг
             List<Integer> imageIds = books.stream()
                     .map(Book::getPhotoLink)
                     .filter(Objects::nonNull)
@@ -212,7 +192,6 @@ public class LibraryService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем DTO
             List<LibraryBookDTO> bookDTOs = books.stream()
                     .map(book -> {
                         LibraryBookDTO dto = new LibraryBookDTO();
@@ -223,16 +202,13 @@ public class LibraryService {
                         dto.setPageCnt(book.getPageCnt());
                         dto.setAddedBy(book.getAddedBy() != null ? book.getAddedBy().getUserId() : null);
 
-                        // Средний рейтинг
                         Double avgRating = averageRatingsMap.get(book.getBookId());
                         if (avgRating != null) {
                             dto.setAverageRating(Math.round(avgRating * 100.0) / 100.0);
                         }
 
-                        // Количество коллекций
                         dto.setCollectionsCount(collectionsCountMap.getOrDefault(book.getBookId(), 0L));
 
-                        // Фото
                         ImageLink photoLink = book.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -253,7 +229,6 @@ public class LibraryService {
                             }
                         }
 
-                        // Авторы (нужно дополнительно загрузить)
                         if (book.getAuthors() != null) {
                             dto.setAuthors(book.getAuthors().stream()
                                     .map(author -> new AuthorDTO(
@@ -266,7 +241,6 @@ public class LibraryService {
                                     .collect(Collectors.toList()));
                         }
 
-                        // Жанры (нужно дополнительно загрузить)
                         if (book.getGenres() != null) {
                             dto.setGenres(book.getGenres().stream()
                                     .map(genre -> new GenreDTO(
@@ -280,7 +254,6 @@ public class LibraryService {
                     })
                     .collect(Collectors.toList());
 
-            // Сортируем по ID
             bookDTOs.sort(Comparator.comparing(LibraryBookDTO::getBookId));
 
             Map<String, Object> response = new HashMap<>();
@@ -303,7 +276,6 @@ public class LibraryService {
         try {
             log.debug("Getting wishlist books for user {}", userId);
 
-            // Получаем вишлист пользователя
             List<BookCollection> wishlists = libraryRepository.findWishlistByUserId(userId);
 
             if (wishlists.isEmpty()) {
@@ -315,10 +287,8 @@ public class LibraryService {
                         "No wishlist found for user", response);
             }
 
-            // Вишлист должен быть один, берем первый
             BookCollection wishlist = wishlists.get(0);
 
-            // Получаем книги из вишлиста
             List<BooksBookCollections> booksInWishlist = bbcRepository.findByBookCollection_BcolsId(wishlist.getBcolsId(), null).getContent();
 
             if (booksInWishlist.isEmpty()) {
@@ -330,15 +300,12 @@ public class LibraryService {
                         "Wishlist is empty", response);
             }
 
-            // Извлекаем ID книг
             List<Integer> bookIds = booksInWishlist.stream()
                     .map(bbc -> bbc.getBook().getBookId())
                     .collect(Collectors.toList());
 
-            // Получаем полную информацию о книгах
             List<Book> books = bookRepository.findAllById(bookIds);
 
-            // Получаем средние рейтинги
             List<Object[]> averageRatings = bookReviewRepository.findAverageRatingsByBookIds(bookIds);
             Map<Integer, Double> averageRatingsMap = averageRatings.stream()
                     .collect(Collectors.toMap(
@@ -346,7 +313,6 @@ public class LibraryService {
                             row -> (Double) row[1]
                     ));
 
-            // Получаем изображения книг
             List<Integer> imageIds = books.stream()
                     .map(Book::getPhotoLink)
                     .filter(Objects::nonNull)
@@ -362,7 +328,6 @@ public class LibraryService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Создаем DTO
             List<LibraryBookDTO> bookDTOs = books.stream()
                     .map(book -> {
                         LibraryBookDTO dto = new LibraryBookDTO();
@@ -373,13 +338,11 @@ public class LibraryService {
                         dto.setPageCnt(book.getPageCnt());
                         dto.setAddedBy(book.getAddedBy() != null ? book.getAddedBy().getUserId() : null);
 
-                        // Средний рейтинг
                         Double avgRating = averageRatingsMap.get(book.getBookId());
                         if (avgRating != null) {
                             dto.setAverageRating(Math.round(avgRating * 100.0) / 100.0);
                         }
 
-                        // Фото
                         ImageLink photoLink = book.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -400,7 +363,6 @@ public class LibraryService {
                             }
                         }
 
-                        // Авторы
                         if (book.getAuthors() != null) {
                             dto.setAuthors(book.getAuthors().stream()
                                     .map(author -> new AuthorDTO(
@@ -413,7 +375,6 @@ public class LibraryService {
                                     .collect(Collectors.toList()));
                         }
 
-                        // Жанры
                         if (book.getGenres() != null) {
                             dto.setGenres(book.getGenres().stream()
                                     .map(genre -> new GenreDTO(

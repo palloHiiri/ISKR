@@ -32,18 +32,15 @@ public interface BooksBookCollectionsRepository extends JpaRepository<BooksBookC
             "WHERE bbc.bookCollection.bcolsId = :collectionId")
     Page<BooksBookCollections> findByBookCollection_BcolsId(@Param("collectionId") Integer collectionId, Pageable pageable);
 
-    // Добавляем метод для подсчета количества коллекций для книги
     @Query("SELECT COUNT(bbc) FROM BooksBookCollections bbc WHERE bbc.book.bookId = :bookId")
     long countByBookId(@Param("bookId") Integer bookId);
 
     @Query("SELECT bbc FROM BooksBookCollections bbc WHERE bbc.bookCollection.bcolsId = :collectionId")
     List<BooksBookCollections> findByBookCollection_BcolsId(@Param("collectionId") Integer collectionId);
 
-    // Подсчет количества книг в коллекции
     @Query("SELECT COUNT(bbc) FROM BooksBookCollections bbc WHERE bbc.bookCollection.bcolsId = :collectionId")
     long countByBookCollection_BcolsId(@Param("collectionId") Integer collectionId);
 
-    // Подсчитать количество книг в коллекции
     @Query("SELECT COUNT(bc) FROM BooksBookCollections bc WHERE bc.bookCollection.bcolsId = :bcolsId")
     long countByBookCollectionId(@Param("bcolsId") Integer bcolsId);
 

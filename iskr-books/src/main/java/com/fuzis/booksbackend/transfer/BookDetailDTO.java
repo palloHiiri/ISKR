@@ -22,7 +22,7 @@ public class BookDetailDTO {
     private UserDTO addedBy;
     private List<AuthorDetailDTO> authors;
     private List<GenreDetailDTO> genres;
-    private Long collectionsCount; // Количество добавлений в коллекции
-    private Double averageRating; // Средний рейтинг
-    private Integer reviewsCount; // Количество отзывов
+    private Long collectionsCount; 
+    private Double averageRating; 
+    private Integer reviewsCount; 
 }

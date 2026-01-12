@@ -8,12 +8,12 @@ import lombok.Data;
 @Data
 public class ReadingGoalRequestDTO {
     @NotBlank(message = "Period is required")
-    private String period; // '1d','3d','week','month','quarter','year'
+    private String period; 
 
     @NotNull(message = "Amount is required")
     @Min(value = 1, message = "Amount must be at least 1")
     private Integer amount;
 
     @NotBlank(message = "Goal type is required")
-    private String goalType; // 'books_read', 'pages_read'
+    private String goalType; 
 }

@@ -183,7 +183,6 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ChangeDTO<Object>> handleGenericExceptions(Exception ex) {
         log.error("Unhandled exception occurred", ex);
 
-        // Return detailed error message to client
         String errorMessage = String.format(
                 "Internal server error: %s - %s",
                 ex.getClass().getSimpleName(),

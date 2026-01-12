@@ -19,7 +19,6 @@ public class ReadingController {
     private final ReadingService readingService;
     private final HttpUtil httpUtil;
 
-    // 1. Создать статус для книги
     @PostMapping("/status")
     public ResponseEntity<ChangeDTO<Object>> createBookReadingStatus(
             @RequestHeader Integer userId,
@@ -29,7 +28,6 @@ public class ReadingController {
         );
     }
 
-    // 2. Изменить статус для книги
     @PutMapping("/status/{bookId}")
     public ResponseEntity<ChangeDTO<Object>> updateBookReadingStatus(
             @RequestHeader Integer userId,
@@ -40,7 +38,6 @@ public class ReadingController {
         );
     }
 
-    // 3. Просмотреть статус для книги
     @GetMapping("/status/{bookId}")
     public ResponseEntity<ChangeDTO<Object>> getBookReadingStatus(
             @RequestHeader Integer userId,
@@ -50,7 +47,6 @@ public class ReadingController {
         );
     }
 
-    // 4. Внести прочитанное
     @PutMapping("/progress/{bookId}")
     public ResponseEntity<ChangeDTO<Object>> updateReadingProgress(
             @RequestHeader Integer userId,
@@ -61,7 +57,6 @@ public class ReadingController {
         );
     }
 
-    // 5. Создать цель
     @PostMapping("/goals")
     public ResponseEntity<ChangeDTO<Object>> createReadingGoal(
             @RequestHeader Integer userId,
@@ -71,7 +66,6 @@ public class ReadingController {
         );
     }
 
-    // 6. Изменить цель
     @PutMapping("/goals/{goalId}")
     public ResponseEntity<ChangeDTO<Object>> updateReadingGoal(
             @RequestHeader Integer userId,
@@ -82,7 +76,6 @@ public class ReadingController {
         );
     }
 
-    // 7. Просмотреть все цели пользователя
     @GetMapping("/goals")
     public ResponseEntity<ChangeDTO<Object>> getReadingGoals(
             @RequestHeader Integer userId) {
@@ -91,7 +84,6 @@ public class ReadingController {
         );
     }
 
-    // 8. Удалить цель
     @DeleteMapping("/goals/{goalId}")
     public ResponseEntity<ChangeDTO<Object>> deleteReadingGoal(
             @RequestHeader Integer userId,
@@ -101,7 +93,6 @@ public class ReadingController {
         );
     }
 
-    // 9. Статистика по завершенным/незавершенным целям
     @GetMapping("/goals/stats")
     public ResponseEntity<ChangeDTO<Object>> getGoalStats(
             @RequestHeader Integer userId) {
@@ -110,7 +101,6 @@ public class ReadingController {
         );
     }
 
-    // 10. Общая статистика по аккаунту
     @GetMapping("/stats")
     public ResponseEntity<ChangeDTO<Object>> getAccountStats(
             @RequestHeader Integer userId) {

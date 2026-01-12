@@ -1,4 +1,3 @@
-// GenreService.java
 package com.fuzis.booksbackend.service;
 
 import com.fuzis.booksbackend.entity.Genre;
@@ -31,14 +30,12 @@ public class GenreService {
         try {
             log.info("Creating genre with name: {}", dto.getName());
 
-            // Check if genre with same name already exists
             if (genreRepository.existsByName(dto.getName())) {
                 log.warn("Genre with name '{}' already exists", dto.getName());
                 return new ChangeDTO<>(State.Fail_Conflict,
                         "Genre with this name already exists", null);
             }
 
-            // Create genre entity
             Genre genre = Genre.builder()
                     .name(dto.getName())
                     .build();
@@ -88,7 +85,6 @@ public class GenreService {
 
             return genreRepository.findById(id)
                     .map(genre -> {
-                        // Check if name is being changed and validate uniqueness
                         if (dto.getName() != null && !dto.getName().isBlank()
                                 && !dto.getName().equals(genre.getName())) {
                             if (genreRepository.existsByNameAndGenreIdNot(dto.getName(), id)) {
@@ -161,7 +157,6 @@ public class GenreService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Genre> genresPage = genreRepository.findAll(pageable);
 
-            // Create simplified response
             Map<String, Object> response = new HashMap<>();
             response.put("page", page);
             response.put("batch", batch);

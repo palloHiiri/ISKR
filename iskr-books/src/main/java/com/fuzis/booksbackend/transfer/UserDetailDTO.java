@@ -22,5 +22,5 @@ public class UserDetailDTO {
     private ImageLinkDTO profileImage;
     private Long subscribersCount;
     private Long subscriptionsCount;
-    private Long collectionsCount; // Новое поле: количество коллекций
+    private Long collectionsCount; 
 }

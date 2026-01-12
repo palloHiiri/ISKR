@@ -1,4 +1,3 @@
-// AuthorService.java
 package com.fuzis.booksbackend.service;
 
 import com.fuzis.booksbackend.entity.Author;
@@ -31,7 +30,6 @@ public class AuthorService {
         try {
             log.info("Creating author with name: {}", dto.getName());
 
-            // Create author entity
             Author author = Author.builder()
                     .name(dto.getName())
                     .realName(dto.getRealName())
@@ -83,7 +81,6 @@ public class AuthorService {
 
             return authorRepository.findById(id)
                     .map(author -> {
-                        // Update only provided fields
                         if (dto.getName() != null && !dto.getName().isBlank()) {
                             author.setName(dto.getName());
                         }
@@ -155,7 +152,6 @@ public class AuthorService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Author> authorsPage = authorRepository.findAll(pageable);
 
-            // Create simplified response
             Map<String, Object> response = new HashMap<>();
             response.put("page", page);
             response.put("batch", batch);

@@ -31,7 +31,6 @@ public class UserService {
         try {
             log.debug("Getting user details for ID: {}", userId);
 
-            // Получаем пользователя с профилем
             List<User> users = userRepository.findByIdsWithProfiles(List.of(userId));
             if (users.isEmpty()) {
                 log.warn("User not found with ID: {}", userId);
@@ -39,7 +38,6 @@ public class UserService {
             }
             User user = users.get(0);
 
-            // Загружаем изображение профиля, если есть
             ImageLinkDTO profileImageDTO = null;
             if (user.getProfile() != null && user.getProfile().getUserImglId() != null) {
                 Integer imageLinkId = user.getProfile().getUserImglId().getImglId();
@@ -60,14 +58,11 @@ public class UserService {
                 }
             }
 
-            // Считаем количество подписчиков и подписок
             long subscribersCount = subscriberRepository.countBySubsUserOn_UserId(userId);
             long subscriptionsCount = subscriberRepository.countBySubsUser_UserId(userId);
 
-            // Считаем количество коллекций пользователя
             long collectionsCount = bookCollectionRepository.countByOwner_UserId(userId);
 
-            // Преобразуем в DTO
             UserDetailDTO dto = new UserDetailDTO();
             dto.setUserId(user.getUserId());
             dto.setUsername(user.getUsername());
@@ -85,7 +80,7 @@ public class UserService {
             dto.setProfileImage(profileImageDTO);
             dto.setSubscribersCount(subscribersCount);
             dto.setSubscriptionsCount(subscriptionsCount);
-            dto.setCollectionsCount(collectionsCount); // Устанавливаем количество коллекций
+            dto.setCollectionsCount(collectionsCount); 
 
             log.debug("User details retrieved for ID: {}, collections count: {}", userId, collectionsCount);
             return new ChangeDTO<>(State.OK, "User details retrieved successfully", dto);
@@ -111,12 +106,10 @@ public class UserService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Subscriber> subscribersPage = subscriberRepository.findBySubsUserOn_UserId(userId, pageable);
 
-            // Получаем список подписчиков (User)
             List<User> subscribers = subscribersPage.getContent().stream()
                     .map(Subscriber::getSubsUser)
                     .collect(Collectors.toList());
 
-            // Преобразуем в DTO с подсчетом подписчиков для каждого пользователя
             List<UserSubscriptionDTO> subscriberDTOs = convertUsersToSubscriptionDTOs(subscribers);
 
             Map<String, Object> response = new HashMap<>();
@@ -156,12 +149,10 @@ public class UserService {
             Pageable pageable = PageRequest.of(page, batch);
             Page<Subscriber> subscriptionsPage = subscriberRepository.findBySubsUser_UserId(userId, pageable);
 
-            // Получаем список пользователей, на которых подписан
             List<User> subscriptions = subscriptionsPage.getContent().stream()
                     .map(Subscriber::getSubsUserOn)
                     .collect(Collectors.toList());
 
-            // Преобразуем в DTO с подсчетом подписчиков для каждого пользователя
             List<UserSubscriptionDTO> subscriptionDTOs = convertUsersToSubscriptionDTOs(subscriptions);
 
             Map<String, Object> response = new HashMap<>();
@@ -191,20 +182,16 @@ public class UserService {
             return new ArrayList<>();
         }
 
-        // Собираем ID пользователей
         List<Integer> userIds = users.stream().map(User::getUserId).collect(Collectors.toList());
 
-        // Загружаем пользователей с профилями
         List<User> usersWithProfiles = userRepository.findByIdsWithProfiles(userIds);
 
-        // Собираем ID изображений
         List<Integer> imageIds = usersWithProfiles.stream()
                 .map(u -> u.getProfile() != null ? u.getProfile().getUserImglId() : null)
                 .filter(Objects::nonNull)
                 .map(ImageLink::getImglId)
                 .collect(Collectors.toList());
 
-        // Загружаем изображения с данными
         Map<Integer, ImageLink> imageLinksMap;
         if (!imageIds.isEmpty()) {
             List<ImageLink> imageLinks = imageLinkRepository.findByIdsWithImageData(imageIds);
@@ -214,10 +201,8 @@ public class UserService {
             imageLinksMap = new HashMap<>();
         }
 
-        // Получаем количество подписчиков для каждого пользователя
         Map<Integer, Long> subscribersCountMap = getSubscribersCountForUsers(userIds);
 
-        // Преобразуем в DTO
         return usersWithProfiles.stream()
                 .map(user -> {
                     UserSubscriptionDTO dto = new UserSubscriptionDTO();
@@ -227,7 +212,6 @@ public class UserService {
                     if (user.getProfile() != null) {
                         dto.setNickname(user.getProfile().getNickname());
 
-                        // Загружаем изображение профиля
                         ImageLink profileImageLink = user.getProfile().getUserImglId();
                         if (profileImageLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(profileImageLink.getImglId());
@@ -249,7 +233,6 @@ public class UserService {
                         }
                     }
 
-                    // Устанавливаем количество подписчиков
                     dto.setSubscribersCount(subscribersCountMap.getOrDefault(user.getUserId(), 0L));
 
                     return dto;
@@ -271,15 +254,12 @@ public class UserService {
 
             Pageable pageable = PageRequest.of(page, batch);
 
-            // Получаем коллекции пользователя (необходимо добавить метод в репозиторий)
             Page<BookCollection> collectionsPage = bookCollectionRepository.findByOwner_UserId(userId, pageable);
 
-            // Собираем ID коллекций
             List<Integer> collectionIds = collectionsPage.getContent().stream()
                     .map(BookCollection::getBcolsId)
                     .collect(Collectors.toList());
 
-            // Получаем количество книг в каждой коллекции
             List<Object[]> bookCountsResults = booksBookCollectionsRepository.findBookCountsByCollectionIds(collectionIds);
             Map<Integer, Long> bookCountsMap = bookCountsResults.stream()
                     .collect(Collectors.toMap(
@@ -287,7 +267,6 @@ public class UserService {
                             row -> (Long) row[1]
                     ));
 
-            // Загружаем изображения для коллекций
             List<Integer> imageIds = collectionsPage.getContent().stream()
                     .map(BookCollection::getPhotoLink)
                     .filter(Objects::nonNull)
@@ -303,7 +282,6 @@ public class UserService {
                 imageLinksMap = new HashMap<>();
             }
 
-            // Преобразуем в DTO
             List<UserCollectionDTO> collectionDTOs = collectionsPage.getContent().stream()
                     .map(collection -> {
                         UserCollectionDTO dto = new UserCollectionDTO();
@@ -313,10 +291,8 @@ public class UserService {
                         dto.setConfidentiality(collection.getConfidentiality().name());
                         dto.setCollectionType(collection.getCollectionType().name());
 
-                        // Количество книг
                         dto.setBookCount(bookCountsMap.getOrDefault(collection.getBcolsId(), 0L).intValue());
 
-                        // Изображение коллекции
                         ImageLink photoLink = collection.getPhotoLink();
                         if (photoLink != null) {
                             ImageLink fullImageLink = imageLinksMap.get(photoLink.getImglId());
@@ -368,17 +344,14 @@ public class UserService {
             return new HashMap<>();
         }
 
-        // Используем новый метод для массового получения количества подписчиков
         List<Object[]> results = subscriberRepository.findSubscribersCountByUserIds(userIds);
 
-        // Создаем мапу userId -> subscribersCount
         Map<Integer, Long> subscribersCountMap = results.stream()
                 .collect(Collectors.toMap(
                         row -> (Integer) row[0],
                         row -> (Long) row[1]
                 ));
 
-        // Для пользователей без подписчиков устанавливаем 0
         userIds.forEach(userId -> subscribersCountMap.putIfAbsent(userId, 0L));
 
         return subscribersCountMap;

@@ -21,19 +21,15 @@ public interface BookReadingStatusRepository extends JpaRepository<BookReadingSt
     List<BookReadingStatus> findByUserIdAndReadingStatus(@Param("userId") Integer userId,
                                                          @Param("readingStatus") String readingStatus);
 
-    // Подсчет количества книг с определенным статусом
     @Query("SELECT COUNT(brs) FROM BookReadingStatus brs WHERE brs.userId = :userId AND brs.readingStatus = :readingStatus")
     Long countByUserIdAndReadingStatus(@Param("userId") Integer userId,
                                        @Param("readingStatus") String readingStatus);
 
-    // Подсчет общего количества прочитанных страниц
     @Query("SELECT COALESCE(SUM(brs.pageRead), 0) FROM BookReadingStatus brs WHERE brs.userId = :userId")
     Integer sumPagesReadByUserId(@Param("userId") Integer userId);
 
-    // Подсчет количества дочитанных книг (статус "Finished")
     @Query("SELECT COUNT(brs) FROM BookReadingStatus brs WHERE brs.userId = :userId AND brs.readingStatus = 'Finished'")
     Long countFinishedBooksByUserId(@Param("userId") Integer userId);
 
-    // Проверка существования статуса
     boolean existsByUserIdAndBook_BookId(Integer userId, Integer bookId);
 }

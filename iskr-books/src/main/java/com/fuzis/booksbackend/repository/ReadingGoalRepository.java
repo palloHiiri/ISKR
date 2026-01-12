@@ -17,7 +17,6 @@ public interface ReadingGoalRepository extends JpaRepository<ReadingGoal, Intege
 
     Optional<ReadingGoal> findByPgoalIdAndUserId(Integer pgoalId, Integer userId);
 
-    // Замените JPQL запросы на нативные запросы
     @Query(value = "SELECT * FROM BOOKS.READING_GOALS rg WHERE rg.user_id = :userId " +
             "AND rg.start_date <= :currentDate " +
             "AND (rg.start_date + " +
@@ -58,6 +57,5 @@ public interface ReadingGoalRepository extends JpaRepository<ReadingGoal, Intege
     Long countExpiredGoalsByUserId(@Param("userId") Integer userId,
                                    @Param("currentDate") LocalDateTime currentDate);
 
-    // Удаление цели
     void deleteByPgoalIdAndUserId(Integer pgoalId, Integer userId);
 }

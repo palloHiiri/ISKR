@@ -9,5 +9,5 @@ public class CollectionPrivilegeRequestDTO {
         private Integer userId;
 
     @NotNull(message = "Status is required")
-    private String cvpStatus; // "Allowed", "Pending", "Denied"
+    private String cvpStatus; 
 }
