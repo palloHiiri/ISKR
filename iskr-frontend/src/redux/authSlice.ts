@@ -10,7 +10,7 @@ export interface User {
   email?: string;
   role?: string;
   email_verified?: boolean;
-  status?: string;
+  status?: string; // Добавляем поле статуса
   roles?: string[]; // Массив ролей пользователя
   profile?: {
     up_id: number;
@@ -343,7 +343,8 @@ const authSlice = createSlice({
         const userWithRoles = {
           ...action.payload.user,
           userId: action.payload.user.id,
-          roles: action.payload.roles.map((role: RoleData) => role.name)
+          roles: action.payload.roles.map((role: RoleData) => role.name),
+          status: action.payload.user.status || 'notBanned' // Добавляем статус
         };
         state.user = userWithRoles;
         state.token = action.payload.token;
@@ -438,7 +439,8 @@ const authSlice = createSlice({
         const userWithRoles = {
           ...action.payload.user,
           userId: action.payload.user.id,
-          roles: action.payload.roles.map((role: RoleData) => role.name)
+          roles: action.payload.roles.map((role: RoleData) => role.name),
+          status: action.payload.user.status || 'notBanned' // Добавляем статус
         };
         state.user = userWithRoles;
         state.isAdmin = action.payload.roles.some((role: RoleData) => 

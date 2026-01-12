@@ -39,8 +39,29 @@ public class IntegrationRequest {
     }
 
     public ResponseEntity<Map> sendPostRequestIntegration(String address, MultiValueMap<String, String> body) {
-        HttpHeaders headers = new HttpHeaders();
+        return sendPostRequestIntegration(address, body, new HttpHeaders());
+    }
+
+    public ResponseEntity<Map> sendPostRequestIntegration(String address, MultiValueMap<String, String> body, HttpHeaders headers) {
         headers.setContentType(MediaType.APPLICATION_FORM_URLENCODED);
+
+        HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
+
+        String url = "http://" + integrationConfiguration.getIntegrationHost()
+                + ":" + integrationConfiguration.getIntegrationPort()
+                + "/oapi-inner/"
+                + address;
+
+        return restTemplate.exchange(
+                url,
+                HttpMethod.POST,
+                request,
+                Map.class
+        );
+    }
+
+    public ResponseEntity<Map> sendPostRequestIntegrationJSON(String address, MultiValueMap<String, String> body, HttpHeaders headers) {
+        headers.setContentType(MediaType.APPLICATION_JSON);
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
 

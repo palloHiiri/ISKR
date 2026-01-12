@@ -12,6 +12,7 @@ import com.fuzis.accountsbackend.transfer.SelectDTO;
 import com.fuzis.accountsbackend.transfer.state.State;
 import com.fuzis.accountsbackend.util.IntegrationRequest;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -226,6 +227,16 @@ public class UserService
             var verify_email_sent_res = updateUserSSO(user_id, null, null, "verify-email");
             if(verify_email_sent_res.getState() != State.OK){
                 return new ChangeDTO<>(State.Fail, "Unable to sent email verification token", verify_email_sent_res);
+            }
+            MultiValueMap<String, String> wishlist_creation_body = new LinkedMultiValueMap<>();
+            wishlist_creation_body.add("userId", user_id.toString());
+            wishlist_creation_body.add("title", "My wishlist");
+            wishlist_creation_body.add("description", "");
+            wishlist_creation_body.add("confidentiality", "Public");
+            wishlist_creation_body.add("collectionType", "Wishlist");
+            var response_wishlist_creation = integrationRequest.sendPostRequestIntegration("v1/collection", wishlist_creation_body);
+            if (response_wishlist_creation.getStatusCode() != HttpStatus.OK) {
+                return new ChangeDTO<>(State.Fail, "Unable to create wishlist for user", response_wishlist_creation.getBody());
             }
             return new ChangeDTO<>(State.OK, "User created. Verification mail sent.", user_id);
         }

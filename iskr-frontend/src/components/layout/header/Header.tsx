@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from "react-redux";
 import { logout, checkAuth, clearRegistrationSuccess } from "../../../redux/authSlice.ts";
 import PrimaryButton from "../../controls/primary-button/PrimaryButton.tsx";
 import SecondaryButton from "../../controls/secondary-button/SecondaryButton.tsx";
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import homeButton from "../../../assets/elements/homeButton.svg";
 import libraryButton from "../../../assets/elements/libraryButton.svg";
 import statisticsButton from "../../../assets/elements/statisticsButton.svg";
@@ -16,6 +16,7 @@ import Login from "../../controls/login/Login.tsx";
 import ForgotPassword from "../../controls/forgot-password/ForgotPassword.tsx";
 import { useEffect, useState } from "react";
 import profileButton from "../../../assets/elements/profileButton.svg";
+import profileAPI from '../../../api/profileService';
 
 interface HeaderProps {
   showLoginModal?: boolean;
@@ -24,6 +25,7 @@ interface HeaderProps {
 function Header({ showLoginModal = false }: HeaderProps) {
   const dispatch = useDispatch<AppDispatch>();
   const navigate = useNavigate();
+  const location = useLocation(); // Добавляем useLocation
   const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
   const user = useSelector((state: RootState) => state.auth.user);
 
@@ -73,6 +75,44 @@ function Header({ showLoginModal = false }: HeaderProps) {
       }
     }
   }, [user]);
+
+  // Проверяем статус пользователя при каждом изменении пути
+  useEffect(() => {
+    const checkUserStatus = async () => {
+      if (isAuthenticated && user?.id) {
+        try {
+          // Получаем актуальные данные пользователя
+          const response = await profileAPI.getUserProfile(user.id);
+          
+          // Если пользователь забанен - вылогиниваем
+          if (response.status === 'banned') {
+            // Показываем сообщение о блокировке            
+            // Выполняем logout
+            dispatch(logout());
+            
+            // Перенаправляем на главную страницу
+            navigate('/', { replace: true });
+          }
+        } catch (error) {
+          console.error('Ошибка при проверке статуса пользователя:', error);
+        }
+      }
+    };
+
+    // Запускаем проверку при каждом изменении пути
+    checkUserStatus();
+  }, [location.pathname, isAuthenticated, user, dispatch, navigate]);
+
+  // Проверяем, есть ли сообщение о блокировке в state
+  useEffect(() => {
+    if (location.state?.showBanMessage) {      
+      // Очищаем state чтобы сообщение не показывалось повторно
+      navigate(location.pathname, { 
+        replace: true, 
+        state: {} 
+      });
+    }
+  }, [location.state, navigate, location.pathname]);
 
   const handleSignIn = () => {
     setAuthType('signup');

@@ -43,9 +43,7 @@ function CollectionListModal({ bookId, onCollectionSelected, onClose }: Collecti
       setError(null);
 
       const response = await collectionAPI.getUserCollections();
-      const filteredCollections = response.collections.filter(
-        (collection: any) => collection.collectionType !== 'Wishlist'
-      );
+      const filteredCollections = response.collections;
       setCollections(filteredCollections);
     } catch (err: any) {
       console.error('Error loading collections:', err);
