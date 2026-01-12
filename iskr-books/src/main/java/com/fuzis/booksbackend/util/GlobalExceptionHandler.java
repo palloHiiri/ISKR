@@ -101,7 +101,7 @@ public class GlobalExceptionHandler {
                     dateTimeEx.getParsedString()
             );
         } else if (ex instanceof HttpMessageNotReadableException) {
-            errorMessage = "Invalid request body format. Please check your input.";
+            errorMessage = "Invalid request body format. Please check your input. " + ex.getMessage() + "cause: " + ex.getCause().getMessage();
         } else {
             errorMessage = "Invalid request format";
         }

@@ -4,9 +4,9 @@ import AddIcon from "../../../assets/elements/add.svg";
 import { useLocation, useNavigate, Navigate } from "react-router-dom";
 import VerticalAccordion from "../../controls/vertical-accordion/VerticalAccordion.tsx";
 import Delete from "../../../assets/elements/delete.svg";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import type { RootState } from "../../../redux/store.ts";
-import { useSelector } from "react-redux";
+import { useSelector, useDispatch } from "react-redux";
 import Login from "../../controls/login/Login.tsx";
 import Modal from "../../controls/modal/Modal.tsx";
 import './Profile.scss';
@@ -18,6 +18,49 @@ import type { ProfileUser, ProfileCollection, UserSubscription, UserSubscriber }
 import { getImageUrl, getCollectionImageUrl } from '../../../api/popularService';
 import { selectIsAdmin } from '../../../redux/authSlice';
 import AdminProfileEditMenu from '../../controls/admin-profile-edit-menu/AdminProfileEditMenu.tsx';
+import { logout } from '../../../redux/authSlice.ts';
+
+// Создадим хук для проверки статуса пользователя
+function useUserStatusChecker() {
+  const dispatch = useDispatch();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isAuthenticated = useSelector((state: RootState) => state.auth.isAuthenticated);
+  const user = useSelector((state: RootState) => state.auth.user);
+  
+  // Используем ref для хранения времени последней проверки
+  const lastCheckTimeRef = useRef<number>(0);
+  
+  useEffect(() => {
+    const checkStatus = async () => {
+      // Проверяем не чаще чем раз в 30 секунд
+      const now = Date.now();
+      if (now - lastCheckTimeRef.current < 30000) return;
+      
+      if (isAuthenticated && user?.id) {
+        try {
+          lastCheckTimeRef.current = now;
+          const response = await profileAPI.getUserProfile(user.id);
+          
+          if (response.status === 'banned') {
+            dispatch(logout());
+            navigate('/', { 
+              replace: true,
+              state: { 
+                showBanMessage: true,
+                message: 'Ваш аккаунт был заблокирован.' 
+              }
+            });
+          }
+        } catch (error) {
+          console.error('Ошибка проверки статуса:', error);
+        }
+      }
+    };
+    
+    checkStatus();
+  }, [location.pathname, isAuthenticated, user, dispatch, navigate]);
+}
 
 function Profile() {
   const location = useLocation();
@@ -54,6 +97,9 @@ function Profile() {
   const [banLoading, setBanLoading] = useState(false);
   const [banError, setBanError] = useState<string | null>(null);
   const [isAdminEditOpen, setIsAdminEditOpen] = useState(false);
+
+  // Используем хук для проверки статуса текущего пользователя
+  useUserStatusChecker();
 
   // Проверяем, заблокирован ли пользователь
   const isBanned = profile?.status === 'banned';

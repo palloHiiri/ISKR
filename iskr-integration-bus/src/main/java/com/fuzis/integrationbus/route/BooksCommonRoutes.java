@@ -1,14 +1,26 @@
 package com.fuzis.integrationbus.route;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fuzis.integrationbus.exception.AuthenticationException;
 import com.fuzis.integrationbus.exception.ServiceFall;
 import org.apache.camel.Exchange;
 import org.apache.camel.LoggingLevel;
 import org.apache.camel.builder.RouteBuilder;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+
+import java.util.HashMap;
+import java.util.Map;
 
 @Component
 public class BooksCommonRoutes extends RouteBuilder {
+    final ObjectMapper objectMapper;
+
+    @Autowired
+    public BooksCommonRoutes(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
+
     @Override
     public void configure() {
         errorHandler(defaultErrorHandler()
@@ -992,6 +1004,51 @@ public class BooksCommonRoutes extends RouteBuilder {
                 .setHeader("X-Service-Request", simple("api/v1/reading/stats"))
                 .to("direct:sd-call-finalize");
 
+        from("platform-http:/oapi-inner/v1/collection?httpMethodRestrict=POST")
+                .routeId("user-books-collection-post-inner-route")
+                .onException(ServiceFall.class)
+                .handled(true)
+                .to("direct:service-error-handler")
+                .end()
+                .onException(AuthenticationException.class)
+                .handled(true)
+                .to("direct:auth-error-handler")
+                .end()
+                .setHeader("X-Headers-Required", constant("userId"))
+                .to("direct:check-params")
+                .setHeader(Exchange.HTTP_METHOD, constant("POST"))
+                .setHeader("X-Service", constant("Books"))
+                .setHeader("X-Service-Request", simple("api/v1/collections"))
+                .setHeader(Exchange.CONTENT_TYPE, constant("application/json"))
+                .process(exchange -> {
+                    // Получаем значения из заголовков
+                    String title = exchange.getIn().getHeader("title", String.class);
+                    String description = exchange.getIn().getHeader("description", String.class);
+                    String confidentiality = exchange.getIn().getHeader("confidentiality", String.class);
+                    String collectionType = exchange.getIn().getHeader("collectionType", String.class);
+
+                    // Создаем JSON объект
+                    Map<String, String> jsonMap = new HashMap<>();
+
+                    // Проверяем и добавляем поля, если они не null
+                    if (title != null) {
+                        jsonMap.put("title", title);
+                    }
+                    if (description != null) {
+                        jsonMap.put("description", description);
+                    }
+                    if (confidentiality != null) {
+                        jsonMap.put("confidentiality", confidentiality);
+                    }
+                    if (collectionType != null) {
+                        jsonMap.put("collectionType", collectionType);
+                    }
+                    String jsonBody = objectMapper.writeValueAsString(jsonMap);
+
+                    // Устанавливаем результат
+                    exchange.getIn().setBody(jsonBody);
+                })
+                .to("direct:sd-call-finalize");
 
 
     }

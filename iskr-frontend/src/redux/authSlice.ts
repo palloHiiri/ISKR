@@ -327,7 +327,8 @@ const authSlice = createSlice({
         const userWithRoles = {
           ...action.payload.user,
           userId: action.payload.user.id,
-          roles: action.payload.roles.map((role: RoleData) => role.name)
+          roles: action.payload.roles.map((role: RoleData) => role.name),
+          status: action.payload.user.status || 'notBanned' // Добавляем статус
         };
         state.user = userWithRoles;
         state.token = action.payload.token;
@@ -417,7 +418,8 @@ const authSlice = createSlice({
         const userWithRoles = {
           ...action.payload.user,
           userId: action.payload.user.id,
-          roles: action.payload.roles.map((role: RoleData) => role.name)
+          roles: action.payload.roles.map((role: RoleData) => role.name),
+          status: action.payload.user.status || 'notBanned' // Добавляем статус
         };
         state.user = userWithRoles;
         state.isAdmin = action.payload.roles.some((role: RoleData) => 
